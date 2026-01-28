@@ -264,12 +264,6 @@ const stats = ref({
   }
 });
 
-// Premium whitelist (server-side authority)
-const PREMIUM_WHITELIST = [
-  'draeder@gmail.com',
-  'daniel@bitfabric.cc'
-];
-
 // Load user data from sessionStorage and fetch keys from D1
 async function initializeFromStorage() {
   if (storedApiKey) {
@@ -287,8 +281,21 @@ async function initializeFromStorage() {
       
       userEmail.value = storedEmail;
       
-      // Determine plan based on email whitelist
-      const isPremium = PREMIUM_WHITELIST.includes(storedEmail.toLowerCase());
+      // Check premium status from server
+      let isPremium = false;
+      try {
+        const premiumResponse = await fetch('/api/premium-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: storedEmail })
+        });
+        if (premiumResponse.ok) {
+          const premiumData = await premiumResponse.json();
+          isPremium = premiumData.isPremium;
+        }
+      } catch (error) {
+        console.error('Error checking premium status:', error);
+      }
       userPlan.value = isPremium ? 'enterprise' : 'starter';
       
       // Fetch API keys from D1 database (using immutable account ID)
@@ -421,12 +428,6 @@ async function signInWithEmail() {
   const password = signInPassword.value.trim();
   if (!email || !password) return;
   
-  // Premium whitelist (no password required)
-  const PREMIUM_WHITELIST = [
-    'draeder@gmail.com',
-    'daniel@bitfabric.cc'
-  ];
-  
   // Hash the entered password
   const hashedPassword = await hashPassword(password);
   
@@ -447,7 +448,22 @@ async function signInWithEmail() {
     accountId.value = immutableAccountId;
     
     userEmail.value = email;
-    const isPremium = PREMIUM_WHITELIST.includes(email);
+    
+    // Check premium status from server
+    let isPremium = false;
+    try {
+      const premiumResponse = await fetch('/api/premium-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      });
+      if (premiumResponse.ok) {
+        const premiumData = await premiumResponse.json();
+        isPremium = premiumData.isPremium;
+      }
+    } catch (error) {
+      console.error('Error checking premium status:', error);
+    }
     userPlan.value = isPremium ? 'enterprise' : 'starter';
     
     // Fetch API keys from D1 (using immutable account ID)
@@ -477,51 +493,9 @@ async function signInWithEmail() {
       }
     }
     connect();
-  } else if (PREMIUM_WHITELIST.includes(email)) {
-    // Premium user - auto-create account with deterministic session key
-    sessionStorage.setItem('bitfabric-api-key', deterministicKey);
-    sessionStorage.setItem('bitfabric-email', email);
-    sessionStorage.setItem('bitfabric-password-hash', hashedPassword);
-    roomId.value = deterministicKey;
-    
-    // Generate immutable account ID
-    const immutableAccountId = await generateAccountId(email, hashedPassword);
-    accountId.value = immutableAccountId;
-    
-    userEmail.value = email;
-    userPlan.value = 'enterprise';
-    
-    // Create deterministic Default API key (requires password - secure!)
-    const defaultKeyValue = await generateDefaultKey(email, hashedPassword);
-    const defaultKey = {
-      id: 'default',
-      name: 'Default',
-      description: 'Your default API key',
-      value: defaultKeyValue,
-      createdAt: Date.now(),
-      permanent: true
-    };
-    apiKeys.value = [defaultKey];
-    
-    // Save to D1
-    try {
-      await fetch('/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          account_id: immutableAccountId,
-          keyName: 'Default',
-          keyDescription: 'Your default API key',
-          keyValue: defaultKeyValue
-        })
-      });
-    } catch (error) {
-      pushLog('Warning: Could not save key to database');
-    }
-    
-    pushLog('✨ Premium account activated!');
-    connect();
-  } else if (storedEmail === email && storedPasswordHash !== hashedPassword) {
+  }
+  
+  if (storedEmail === email && storedPasswordHash !== hashedPassword) {
     // Wrong password
     alert('Incorrect password. Please try again.');
   } else {

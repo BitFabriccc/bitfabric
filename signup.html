@@ -179,12 +179,6 @@
   </style>
   
   <script>
-    // Whitelist for free premium access
-    const PREMIUM_WHITELIST = [
-      'draeder@gmail.com',
-      'daniel@bitfabric.cc'
-    ];
-    
     async function hashPassword(password) {
       const encoder = new TextEncoder();
       const data = encoder.encode(password);
@@ -238,8 +232,21 @@
       resultDiv.classList.remove('show');
       
       try {
-        // Check if email is in premium whitelist
-        const isPremium = PREMIUM_WHITELIST.includes(email.toLowerCase());
+        // Check premium status on server
+        let isPremium = false;
+        try {
+          const premiumResponse = await fetch('/api/premium-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+          });
+          if (premiumResponse.ok) {
+            const premiumData = await premiumResponse.json();
+            isPremium = premiumData.isPremium;
+          }
+        } catch (error) {
+          console.error('Error checking premium status:', error);
+        }
         
         // Hash password securely
         const hashedPassword = await hashPassword(password);

@@ -184,7 +184,6 @@ class UniWRTCClient {
     switch (message.type) {
       case 'welcome':
         this.clientId = message.clientId;
-        console.log('[UniWRTC] If this helps, consider donating ❤️ → https://coff.ee/draederg');
         break;
       case 'joined':
         this.sessionId = message.sessionId;

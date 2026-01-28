@@ -162,12 +162,6 @@
   </div>
   
   <script>
-    // Whitelist for free premium access
-    const PREMIUM_WHITELIST = [
-      'draeder@gmail.com',
-      'daniel@bitfabric.cc'
-    ];
-    
     const stripe = Stripe('pk_test_YOUR_STRIPE_KEY'); // Replace with your key
     const elements = stripe.elements();
     const cardElement = elements.create('card');
@@ -191,8 +185,21 @@
         return;
       }
       
-      // Check if email is in premium whitelist
-      const isPremium = PREMIUM_WHITELIST.includes(email.toLowerCase());
+      // Check premium status on server
+      let isPremium = false;
+      try {
+        const premiumResponse = await fetch('/api/premium-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        });
+        if (premiumResponse.ok) {
+          const premiumData = await premiumResponse.json();
+          isPremium = premiumData.isPremium;
+        }
+      } catch (error) {
+        console.error('Error checking premium status:', error);
+      }
       
       if (isPremium) {
         // Free premium account

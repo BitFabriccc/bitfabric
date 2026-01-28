@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [
@@ -25,6 +26,14 @@ export default defineConfig({
     include: ['gun', 'simple-peer', 'bittorrent-tracker/client', 'buffer']
   },
   build: {
-    target: 'esnext'
+    target: 'esnext',
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        pricing: resolve(__dirname, 'pricing.html'),
+        signup: resolve(__dirname, 'signup.html'),
+        checkout: resolve(__dirname, 'checkout.html')
+      }
+    }
   }
 });

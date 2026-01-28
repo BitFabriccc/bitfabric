@@ -8,4 +8,4 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "bitfabric-db"
-database_id = "b0ba2332-f492-46b8-b0a7-f02483a0ffda"
+database_id = "036b4a96-6aaf-44dc-b350-31ee078d14e6"
