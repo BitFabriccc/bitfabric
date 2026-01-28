@@ -19,8 +19,8 @@ export class PubSubTransport {
     this.roomId = config.roomId;
     this.peerId = config.peerId;
     
-    // Use a fixed channel for testing (all users share same channel)
-    this.channel = 'bitfabric-public-test';
+    // Use API key as the channel (isolated per user)
+    this.channel = this.roomId || 'default';
     
     // Transport clients
     this.nostrClients = [];
@@ -34,6 +34,9 @@ export class PubSubTransport {
     
     // Topic subscriptions: topic -> Set<callback>
     this.subscriptions = new Map();
+    
+    // Message cache: topic -> last message (for replay on subscribe)
+    this.topicCache = new Map();
     
     // Message deduplication
     this.seenMessages = new Set();
@@ -98,7 +101,10 @@ export class PubSubTransport {
         }
       });
       
-      await client.connect();
+      await client.connect().catch(err => {
+        // Silently fail on connection errors - don't propagate
+        throw err;
+      });
       this.nostrClients.push(client);
       
       // Set peer ID from first successful connection
@@ -107,7 +113,7 @@ export class PubSubTransport {
       }
       
     } catch (err) {
-      // Silently handle connection failures
+      // Silently handle connection failures - no console spam
     }
   }
   
@@ -193,23 +199,26 @@ export class PubSubTransport {
     
     // Route to topic subscribers
     const topic = decryptedPayload.topic;
+    
+    // Cache this message for the topic (for replay to future subscribers)
+    const cachedMessage = {
+      source,
+      from,
+      topic,
+      data: decryptedPayload.data,
+      timestamp: decryptedPayload.timestamp
+    };
+    this.topicCache.set(topic, cachedMessage);
+    
     if (topic && this.subscriptions.has(topic)) {
       const callbacks = this.subscriptions.get(topic);
       callbacks.forEach(callback => {
         try {
-          callback({
-            source,
-            from,
-            topic,
-            data: decryptedPayload.data,
-            timestamp: decryptedPayload.timestamp
-          });
+          callback(cachedMessage);
         } catch (err) {
           // Silently handle callback errors
         }
       });
-    } else {
-      // No subscribers for this topic
     }
   }
   
@@ -222,6 +231,18 @@ export class PubSubTransport {
     }
     
     this.subscriptions.get(topic).add(callback);
+    
+    // Deliver cached message immediately if one exists for this topic
+    if (this.topicCache.has(topic)) {
+      const cachedMessage = this.topicCache.get(topic);
+      setTimeout(() => {
+        try {
+          callback(cachedMessage);
+        } catch (err) {
+          // Silently handle callback errors
+        }
+      }, 0);
+    }
     
     return () => this.unsubscribe(topic, callback);
   }

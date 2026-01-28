@@ -170,8 +170,9 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
         cleanup();
         resolve();
       };
-      const onError = () => {
+      const onError = (err) => {
         cleanup();
+        // Silently fail - don't log WebSocket errors
         reject(new Error('Failed to connect to relay'));
       };
       const cleanup = () => {
@@ -189,13 +190,11 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
     });
 
     // Subscribe to this room (topic-tag filtered)
-    const now = Math.floor(Date.now() / 1000);
     const filter = {
       kinds: [1],
       '#t': [state.room],
-      // Use a wider window to tolerate clock skew; app layer filters stale via session nonces.
-      since: now - 600,
-      limit: 200,
+      // Fetch recent messages - app routes by topic
+      limit: 50,
     };
 
     sendRaw(['REQ', state.subId, filter]);
