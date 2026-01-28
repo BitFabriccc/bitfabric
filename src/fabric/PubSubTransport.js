@@ -27,9 +27,19 @@ export class PubSubTransport {
     this.gun = null;
     
     // Config
+    // Primary relays first - try to use these
+    this.primaryRelays = [
+      'wss://nos.lol',
+      'wss://relay.primal.net'
+    ];
+    
     this.nostrRelays = config.nostrRelays || [
-      'wss://relay.damus.io',
-      'wss://relay.nostr.band'
+      'wss://nos.lol',
+      'wss://relay.primal.net',
+      'wss://relay.nostr.band',
+      'wss://relay.snort.social',
+      'wss://nostr.wine',
+      'wss://relay.damus.io'
     ];
     
     // Topic subscriptions: topic -> Set<callback>
@@ -71,15 +81,35 @@ export class PubSubTransport {
   }
   
   /**
-   * Initialize network relays
+   * Initialize network relays - try primary first, stop once connected
    */
   async initNostr() {
+    // Try primary relays first
+    for (const relayUrl of this.primaryRelays) {
+      try {
+        await this.initNostrRelay(relayUrl);
+        // If we got a successful connection, stop trying others
+        if (this.nostrClients.length >= 1) {
+          return;
+        }
+      } catch (err) {
+        // Continue to next relay
+      }
+    }
     
-    const relayPromises = this.nostrRelays.map(relayUrl => 
-      this.initNostrRelay(relayUrl)
-    );
-    
-    await Promise.allSettled(relayPromises);
+    // If primary relays didn't connect, try fallbacks one more time
+    const fallbackRelays = this.nostrRelays.filter(r => !this.primaryRelays.includes(r));
+    for (const relayUrl of fallbackRelays) {
+      try {
+        await this.initNostrRelay(relayUrl);
+        // If we got a successful connection, stop
+        if (this.nostrClients.length >= 1) {
+          return;
+        }
+      } catch (err) {
+        // Continue to next relay
+      }
+    }
   }
   
   /**

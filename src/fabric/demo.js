@@ -17,8 +17,12 @@ export async function createChatDemo(roomId = 'demo-room') {
   const fabric = new PubSubFabric({
     roomId,
     nostrRelays: [
-      'wss://relay.damus.io',
-      'wss://relay.nostr.band'
+      'wss://relay.primal.net',
+      'wss://relay.nostr.band',
+      'wss://nos.lol',
+      'wss://relay.snort.social',
+      'wss://nostr.wine',
+      'wss://relay.damus.io'
     ]
   });
   
