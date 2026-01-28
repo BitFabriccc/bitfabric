@@ -1,0 +1,11 @@
+{
+  "env": {
+    "production": {
+      "d1_databases": {
+        "DB": {
+          "id": "b0ba2332-f492-46b8-b0a7-f02483a0ffda"
+        }
+      }
+    }
+  }
+}

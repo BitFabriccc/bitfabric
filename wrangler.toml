@@ -1,0 +1,11 @@
+name = "bitfabric"
+compatibility_date = "2024-01-01"
+
+# Pages configuration
+pages_build_output_dir = "dist"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "bitfabric-db"
+database_id = "b0ba2332-f492-46b8-b0a7-f02483a0ffda"

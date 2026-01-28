@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout - BitFabric</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f7fafc;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #1a202c;
+      margin-bottom: 32px;
+      font-size: 28px;
+    }
+    .field {
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      color: #4a5568;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .stripe-field {
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    #card {
+      height: 40px;
+    }
+    .summary {
+      background: #f7fafc;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .summary-total {
+      display: flex;
+      justify-content: space-between;
+      border-top: 2px solid #e2e8f0;
+      padding-top: 12px;
+      margin-top: 12px;
+      font-weight: 600;
+      font-size: 18px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .error {
+      color: #f56565;
+      padding: 12px;
+      background: #fff5f5;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .error.show {
+      display: block;
+    }
+    .success {
+      color: #48bb78;
+      padding: 12px;
+      background: #f0fff4;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .success.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Complete Your Purchase</h1>
+    
+    <div class="summary">
+      <div class="summary-row">
+        <span>Plan:</span>
+        <span id="planName">Professional</span>
+      </div>
+      <div class="summary-row">
+        <span>Billing:</span>
+        <span>Monthly</span>
+      </div>
+      <div class="summary-total">
+        <span>Total:</span>
+        <span>$<span id="planPrice">9</span>/mo</span>
+      </div>
+    </div>
+    
+    <div class="error" id="error"></div>
+    <div class="success" id="success"></div>
+    
+    <div class="field">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" placeholder="your@email.com" required>
+    </div>
+    
+    <div class="field">
+      <label for="card">Card Details</label>
+      <div class="stripe-field">
+        <div id="card"></div>
+      </div>
+    </div>
+    
+    <button id="submitBtn" onclick="processPayment()">Subscribe Now</button>
+    
+    <p style="text-align: center; margin-top: 20px; color: #718096; font-size: 14px;">
+      Your payment is secured by Stripe. We never store your card details.
+    </p>
+  </div>
+  
+  <script>
+    // Whitelist for free premium access
+    const PREMIUM_WHITELIST = [
+      'draeder@gmail.com',
+      'daniel@bitfabric.cc'
+    ];
+    
+    const stripe = Stripe('pk_test_YOUR_STRIPE_KEY'); // Replace with your key
+    const elements = stripe.elements();
+    const cardElement = elements.create('card');
+    cardElement.mount('#card');
+    
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get('plan') || 'professional';
+    const price = params.get('price') || 900;
+    
+    // Update UI
+    document.getElementById('planName').textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+    document.getElementById('planPrice').textContent = (price / 100).toFixed(2);
+    
+    async function processPayment() {
+      const btn = document.getElementById('submitBtn');
+      const email = document.getElementById('email').value;
+      const errorDiv = document.getElementById('error');
+      
+      if (!email) {
+        showError('Please enter your email');
+        return;
+      }
+      
+      // Check if email is in premium whitelist
+      const isPremium = PREMIUM_WHITELIST.includes(email.toLowerCase());
+      
+      if (isPremium) {
+        // Free premium account
+        document.getElementById('success').textContent = '⭐ Premium account activated! Redirecting...';
+        document.getElementById('success').classList.add('show');
+        
+        // Generate API key
+        const apiKey = generateUUID();
+        localStorage.setItem('bitfabric-api-key', apiKey);
+        localStorage.setItem('bitfabric-email', email);
+        localStorage.setItem('bitfabric-plan', 'enterprise');
+        
+        setTimeout(() => {
+          window.location.href = `/?apikey=${apiKey}`;
+        }, 1500);
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+      errorDiv.classList.remove('show');
+      
+      try {
+        // Create payment method
+        const { paymentMethod, error } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: cardElement,
+          billing_details: { email }
+        });
+        
+        if (error) {
+          showError(error.message);
+          btn.disabled = false;
+          btn.textContent = 'Subscribe Now';
+          return;
+        }
+        
+        // Call your Cloudflare Worker to process payment
+        const response = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paymentMethodId: paymentMethod.id,
+            email,
+            plan,
+            amount: price
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          showError(result.error || 'Payment failed');
+          btn.disabled = false;
+          btn.textContent = 'Subscribe Now';
+          return;
+        }
+        
+        // Success - store API key and redirect
+        document.getElementById('success').textContent = '✓ Payment successful! Redirecting...';
+        document.getElementById('success').classList.add('show');
+        
+        setTimeout(() => {
+          window.location.href = `/?apikey=${result.apiKey}`;
+        }, 2000);
+        
+      } catch (err) {
+        showError(err.message);
+        btn.disabled = false;
+        btn.textContent = 'Subscribe Now';
+      }
+    }
+    
+    function showError(message) {
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = message;
+      errorDiv.classList.add('show');
+    }
+    
+    function generateUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+  </script>
+</body>
+</html>
