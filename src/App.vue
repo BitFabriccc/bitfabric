@@ -384,6 +384,45 @@ if (window.location.search.includes('apikey') || window.location.search.includes
   window.history.replaceState({}, '', window.location.pathname);
 }
 
+// Check for email parameter and auto-authenticate if whitelisted
+const emailParam = new URLSearchParams(window.location.search).get('email');
+if (emailParam) {
+  (async () => {
+    try {
+      const authResponse = await fetch('/api/authenticate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailParam })
+      });
+      
+      if (authResponse.ok) {
+        const authData = await authResponse.json();
+        // Auto-authenticate whitelisted user
+        sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
+        sessionStorage.setItem('bitfabric-email', authData.email);
+        sessionStorage.setItem('bitfabric-password-hash', 'premium-whitelisted');
+        roomId.value = authData.sessionKey;
+        accountId.value = authData.accountId;
+        userEmail.value = authData.email;
+        userPlan.value = authData.plan;
+        
+        // Set default key if returned
+        if (authData.defaultKey) {
+          apiKeys.value = [authData.defaultKey];
+        }
+        
+        // Clear email from URL
+        window.history.replaceState({}, '', window.location.pathname);
+        
+        // Try to connect
+        await connect();
+      }
+    } catch (error) {
+      console.error('Error authenticating:', error);
+    }
+  })();
+}
+
 function pushLog(text) {
   const line = `${new Date().toLocaleTimeString()} · ${text}`;
   logs.value.unshift(line);
@@ -499,8 +538,39 @@ async function signInWithEmail() {
     // Wrong password
     alert('Incorrect password. Please try again.');
   } else {
-    // No account found - redirect to signup
-    window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+    // No account found - check if whitelisted
+    try {
+      const authResponse = await fetch('/api/authenticate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      });
+      
+      if (authResponse.ok) {
+        // Whitelisted user - auto-authenticate
+        const authData = await authResponse.json();
+        sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
+        sessionStorage.setItem('bitfabric-email', authData.email);
+        sessionStorage.setItem('bitfabric-password-hash', 'premium-whitelisted');
+        roomId.value = authData.sessionKey;
+        accountId.value = authData.accountId;
+        userEmail.value = authData.email;
+        userPlan.value = authData.plan;
+        
+        // Set default key if returned
+        if (authData.defaultKey) {
+          apiKeys.value = [authData.defaultKey];
+        }
+        
+        connect();
+      } else {
+        // Not whitelisted - redirect to signup
+        window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+      }
+    } catch (error) {
+      // Error checking auth - redirect to signup
+      window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+    }
   }
 }
 

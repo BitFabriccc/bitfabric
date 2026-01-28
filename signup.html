@@ -4,6 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Get API Key - BitFabric</title>
+  <script>
+    // Check if email is whitelisted and auto-authenticate
+    (async () => {
+      const emailParam = new URLSearchParams(window.location.search).get('email');
+      if (emailParam) {
+        try {
+          const authResponse = await fetch('/api/authenticate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: emailParam })
+          });
+          
+          if (authResponse.ok) {
+            const authData = await authResponse.json();
+            // Whitelisted user - redirect to main app with session
+            sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
+            sessionStorage.setItem('bitfabric-email', authData.email);
+            sessionStorage.setItem('bitfabric-password-hash', 'premium-whitelisted');
+            window.location.href = '/';
+          }
+        } catch (error) {
+          console.error('Error authenticating:', error);
+          // Continue to signup form if not whitelisted
+        }
+      }
+    })();
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
