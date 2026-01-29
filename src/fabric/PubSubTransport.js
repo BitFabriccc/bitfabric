@@ -74,6 +74,11 @@ export class PubSubTransport {
     // Initialize Nostr first to get peer ID
     await this.initNostr();
     
+    // Ensure we have a peer ID
+    if (!this.peerId) {
+      throw new Error('Failed to initialize Nostr relays - no peer ID obtained');
+    }
+    
     // Initialize Gun secondary transport
     await this.initGun();
     
@@ -87,7 +92,10 @@ export class PubSubTransport {
     // Try primary relays first
     for (const relayUrl of this.primaryRelays) {
       try {
-        await this.initNostrRelay(relayUrl);
+        await Promise.race([
+          this.initNostrRelay(relayUrl),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+        ]);
         // If we got a successful connection, stop trying others
         if (this.nostrClients.length >= 1) {
           return;
@@ -101,7 +109,10 @@ export class PubSubTransport {
     const fallbackRelays = this.nostrRelays.filter(r => !this.primaryRelays.includes(r));
     for (const relayUrl of fallbackRelays) {
       try {
-        await this.initNostrRelay(relayUrl);
+        await Promise.race([
+          this.initNostrRelay(relayUrl),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+        ]);
         // If we got a successful connection, stop
         if (this.nostrClients.length >= 1) {
           return;
@@ -151,8 +162,14 @@ export class PubSubTransport {
    * Initialize secondary network relay
    */
   async initGun() {
+    // Ensure we can still use Gun even if Nostr is down.
+    // Peer ID is used only for identifying the sender.
     if (!this.peerId) {
-      return;
+      try {
+        this.peerId = crypto.randomUUID();
+      } catch {
+        this.peerId = `peer-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+      }
     }
     
     try {
@@ -323,15 +340,17 @@ export class PubSubTransport {
       }
     });
     
-    // Also immediately deliver message to local subscribers (loopback - unencrypted for testing)
+    // Immediately deliver message to local subscribers (loopback - unencrypted for testing)
+    // Use a small timeout to ensure subscription callbacks are registered
     setTimeout(() => {
       this.handleMessage('local', this.peerId, message);
-    }, 0);
+    }, 10);
     
     // Publish via Gun
     if (this.gun) {
       try {
-        const room = this.gun.get(`pubsub-room-${this.roomId}`);
+        // Must match the read path in initGun()
+        const room = this.gun.get(`pubsub-${this.channel}`);
         const messageId = `${this.peerId}-${topic}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         
         room.get('messages').get(messageId).put({

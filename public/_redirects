@@ -1,3 +1,5 @@
 /signup /signup.html 200!
 /checkout /checkout.html 200!
 /pricing /pricing.html 200!
+/docs/*.md /docs.html 301!
+/docs /docs.html 301!

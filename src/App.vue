@@ -42,6 +42,8 @@
               <a href="/signup.html" class="btn-link-bold">Create Free Account</a>
               <span>•</span>
               <a href="/pricing.html" class="btn-link">View Pricing</a>
+              <span>•</span>
+              <a href="/quickstart.html" class="btn-link">📚 Docs</a>
             </div>
           </div>
         </div>
@@ -190,7 +192,7 @@
                       <strong>{{ key.name }}</strong>
                       <span v-if="key.permanent" style="margin-left: 8px; padding: 2px 6px; background: #48bb78; color: white; border-radius: 4px; font-size: 10px; font-weight: 600;">PERMANENT</span>
                       <p style="margin: 2px 0 0 0; color: var(--muted); font-size: 12px;">{{ key.description }}</p>
-                      <p style="margin: 4px 0 0 0; color: var(--muted); font-size: 11px;">Created: {{ new Date(key.created_at).toLocaleDateString() }}</p>
+                      <p style="margin: 4px 0 0 0; color: var(--muted); font-size: 11px;">Created: {{ formatDate(key.created_at) }}</p>
                     </div>
                     <button v-if="!key.permanent" class="btn-small" @click="deleteApiKey(key.key_id)">Delete</button>
                   </div>
@@ -225,7 +227,7 @@
       </div>
 
       <div class="footer">
-        BitFabric PubSub © 2026 · <a href="/pricing.html" style="color: #667eea; text-decoration: none;">Pricing</a> · <a href="/signup.html" style="color: #667eea; text-decoration: none;">Get Started</a> · Enterprise solutions available
+        BitFabric PubSub © 2026 · <a href="/quickstart.html" style="color: #667eea; text-decoration: none;">📚 Docs</a> · <a href="/pricing.html" style="color: #667eea; text-decoration: none;">Pricing</a> · <a href="/signup.html" style="color: #667eea; text-decoration: none;">Get Started</a> · Enterprise solutions available
       </div>
     </div>
   </div>
@@ -266,65 +268,41 @@ const stats = ref({
 
 // Load user data from sessionStorage and fetch keys from D1
 async function initializeFromStorage() {
-  if (storedApiKey) {
-    const storedEmail = sessionStorage.getItem('bitfabric-email');
-    const storedPasswordHash = sessionStorage.getItem('bitfabric-password-hash');
-    if (storedEmail && storedPasswordHash) {
-      // Regenerate deterministic session key
-      const deterministicKey = await generateDeterministicKey(storedEmail, storedPasswordHash);
-      sessionStorage.setItem('bitfabric-api-key', deterministicKey);
-      roomId.value = deterministicKey;
-      
-      // Generate immutable account ID
-      const immutableAccountId = await generateAccountId(storedEmail, storedPasswordHash);
-      accountId.value = immutableAccountId;
-      
-      userEmail.value = storedEmail;
-      
-      // Check premium status from server
-      let isPremium = false;
-      try {
-        const premiumResponse = await fetch('/api/premium-check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: storedEmail })
-        });
-        if (premiumResponse.ok) {
-          const premiumData = await premiumResponse.json();
-          isPremium = premiumData.isPremium;
-        }
-      } catch (error) {
-        console.error('Error checking premium status:', error);
+  const storedEmail = sessionStorage.getItem('bitfabric-email');
+  if (!storedEmail) return;
+
+  // Always re-hydrate session from the server (D1 is source of truth)
+  try {
+    const authResponse = await fetch('/api/authenticate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: storedEmail })
+    });
+
+    if (!authResponse.ok) return;
+    const authData = await authResponse.json();
+    if (!authData?.authenticated) return;
+
+    sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
+    roomId.value = authData.sessionKey;
+    accountId.value = authData.accountId;
+    userEmail.value = authData.email;
+    userPlan.value = authData.plan || 'starter';
+
+    // Fetch API keys from D1 database
+    try {
+      const response = await fetch(`/api/keys?account_id=${encodeURIComponent(authData.accountId)}`);
+      if (response.ok) {
+        const data = await response.json();
+        apiKeys.value = data.keys || [];
+      } else if (authData.defaultKey) {
+        apiKeys.value = [authData.defaultKey];
       }
-      userPlan.value = isPremium ? 'enterprise' : 'starter';
-      
-      // Fetch API keys from D1 database (using immutable account ID)
-      if (isPremium) {
-        try {
-          const response = await fetch(`/api/keys?account_id=${encodeURIComponent(immutableAccountId)}`);
-          if (response.ok) {
-            const data = await response.json();
-            apiKeys.value = data.keys || [];
-            
-            // Check if Default key exists in D1
-            const existingDefault = apiKeys.value.find(k => k.key_id === 'default');
-            if (!existingDefault) {
-              // Only create Default key on first login
-              const defaultKeyValue = await generateDefaultKey(storedEmail, storedPasswordHash);
-              await createKeyInDB('Default', 'Your default API key', defaultKeyValue);
-              // Fetch again to get the newly created key
-              const refetch = await fetch(`/api/keys?account_id=${encodeURIComponent(immutableAccountId)}`);
-              if (refetch.ok) {
-                apiKeys.value = (await refetch.json()).keys || [];
-              }
-            }
-            // If Default key exists, keep using it (even if password changed!)
-          }
-        } catch (error) {
-          pushLog('Error loading API keys: ' + error.message);
-        }
-      }
+    } catch (error) {
+      if (authData.defaultKey) apiKeys.value = [authData.defaultKey];
     }
+  } catch (error) {
+    // If auth fails, keep user signed out
   }
 }
 
@@ -429,148 +407,57 @@ function pushLog(text) {
   if (logs.value.length > 120) logs.value.pop();
 }
 
-async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Generate deterministic API key from email + password hash
-async function generateDeterministicKey(email, passwordHash) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`bitfabric-${email.toLowerCase()}-${passwordHash}`);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  // Format as UUID
-  return `${hash.substr(0,8)}-${hash.substr(8,4)}-${hash.substr(12,4)}-${hash.substr(16,4)}-${hash.substr(20,12)}`;
-}
-
-// Generate immutable account ID from email + password hash (never changes)
-async function generateAccountId(email, passwordHash) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`bitfabric-account-${email.toLowerCase()}-${passwordHash}`);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return `${hash.substr(0,8)}-${hash.substr(8,4)}-${hash.substr(12,4)}-${hash.substr(16,4)}-${hash.substr(20,12)}`;
-}
-
-// Generate deterministic Default key - same as session key (one key per user!)
-async function generateDefaultKey(email, passwordHash) {
-  return await generateDeterministicKey(email, passwordHash);
+function formatDate(timestamp) {
+  if (!timestamp) return 'N/A';
+  const date = new Date(typeof timestamp === 'string' ? parseInt(timestamp) : timestamp);
+  return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
 }
 async function signInWithEmail() {
   const email = signInEmail.value.trim().toLowerCase();
   const password = signInPassword.value.trim();
   if (!email || !password) return;
-  
-  // Hash the entered password
-  const hashedPassword = await hashPassword(password);
-  
-  // Generate deterministic key from email + password hash
-  const deterministicKey = await generateDeterministicKey(email, hashedPassword);
-  
-  // Check sessionStorage for stored API key for this email
-  const storedEmail = sessionStorage.getItem('bitfabric-email');
-  const storedPasswordHash = sessionStorage.getItem('bitfabric-password-hash');
-  
-  if (storedEmail === email && storedPasswordHash === hashedPassword) {
-    // Correct credentials - use deterministic key
-    sessionStorage.setItem('bitfabric-api-key', deterministicKey);
-    roomId.value = deterministicKey;
-    
-    // Generate immutable account ID
-    const immutableAccountId = await generateAccountId(email, hashedPassword);
-    accountId.value = immutableAccountId;
-    
-    userEmail.value = email;
-    
-    // Check premium status from server
-    let isPremium = false;
-    try {
-      const premiumResponse = await fetch('/api/premium-check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email })
-      });
-      if (premiumResponse.ok) {
-        const premiumData = await premiumResponse.json();
-        isPremium = premiumData.isPremium;
-      }
-    } catch (error) {
-      console.error('Error checking premium status:', error);
-    }
-    userPlan.value = isPremium ? 'enterprise' : 'starter';
-    
-    // Fetch API keys from D1 (using immutable account ID)
-    if (isPremium) {
-      try {
-        const response = await fetch(`/api/keys?account_id=${encodeURIComponent(immutableAccountId)}`);
-        if (response.ok) {
-          const data = await response.json();
-          apiKeys.value = data.keys || [];
-          
-          // Check if Default key exists in D1
-          const existingDefault = apiKeys.value.find(k => k.key_id === 'default');
-          if (!existingDefault) {
-            // Only create Default key on first login
-            const defaultKeyValue = await generateDefaultKey(email, hashedPassword);
-            await createKeyInDB('Default', 'Your default API key', defaultKeyValue);
-            // Fetch again to get the newly created key
-            const refetch = await fetch(`/api/keys?account_id=${encodeURIComponent(immutableAccountId)}`);
-            if (refetch.ok) {
-              apiKeys.value = (await refetch.json()).keys || [];
-            }
-          }
-          // If Default key exists, keep using it (even if password changed!)
-        }
-      } catch (error) {
-        pushLog('Error loading keys: ' + error.message);
-      }
-    }
-    connect();
-  }
-  
-  if (storedEmail === email && storedPasswordHash !== hashedPassword) {
-    // Wrong password
-    alert('Incorrect password. Please try again.');
-  } else {
-    // No account found - check if whitelisted
-    try {
-      const authResponse = await fetch('/api/authenticate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email })
-      });
-      
-      if (authResponse.ok) {
-        // Whitelisted user - auto-authenticate
-        const authData = await authResponse.json();
-        sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
-        sessionStorage.setItem('bitfabric-email', authData.email);
-        sessionStorage.setItem('bitfabric-password-hash', 'premium-whitelisted');
-        roomId.value = authData.sessionKey;
-        accountId.value = authData.accountId;
-        userEmail.value = authData.email;
-        userPlan.value = authData.plan;
-        
-        // Set default key if returned
-        if (authData.defaultKey) {
-          apiKeys.value = [authData.defaultKey];
-        }
-        
-        connect();
-      } else {
-        // Not whitelisted - redirect to signup
-        window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
-      }
-    } catch (error) {
-      // Error checking auth - redirect to signup
+
+  // Server-side auth (D1 is source of truth for the API key)
+  try {
+    const authResponse = await fetch('/api/authenticate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+
+    if (!authResponse.ok) {
       window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+      return;
     }
+
+    const authData = await authResponse.json();
+    if (!authData?.authenticated) {
+      window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+      return;
+    }
+
+    sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
+    sessionStorage.setItem('bitfabric-email', authData.email);
+    roomId.value = authData.sessionKey;
+    accountId.value = authData.accountId;
+    userEmail.value = authData.email;
+    userPlan.value = authData.plan;
+
+    // Load keys list (DB)
+    try {
+      const response = await fetch(`/api/keys?account_id=${encodeURIComponent(authData.accountId)}`);
+      if (response.ok) {
+        apiKeys.value = (await response.json()).keys || [];
+      } else if (authData.defaultKey) {
+        apiKeys.value = [authData.defaultKey];
+      }
+    } catch {
+      if (authData.defaultKey) apiKeys.value = [authData.defaultKey];
+    }
+
+    connect();
+  } catch {
+    window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
   }
 }
 
@@ -655,12 +542,13 @@ function publish() {
     // Auto-subscribe to the topic if not already subscribed
     if (!subscribedTopics.value.includes(topic)) {
       const unsub = fabric.subscribe(topic, (message) => {
+        pushLog(`Message received on ${topic}: ${JSON.stringify(message.data)}`);
         messages.value.unshift({
-          topic: message.topic,
-          from: message.from,
-          data: message.data,
+          topic: message.topic || topic,
+          from: message.from || 'unknown',
+          data: message.data || {},
           messageId: `${message.from}-${message.topic}-${Date.now()}`,
-          receivedAt: message.timestamp || Date.now()
+          receivedAt: message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
         });
         if (messages.value.length > 50) messages.value.pop();
       });
@@ -670,8 +558,10 @@ function publish() {
       pushLog(`Auto-subscribed to: ${topic}`);
     }
     
-    fabric.publish(topic, data);
-    pushLog(`Published to topic: ${topic}`);
+    fabric.publish(topic, data).catch(err => {
+      pushLog(`Publish error: ${err.message}`);
+    });
+    pushLog(`Publishing to topic: ${topic}`);
   } catch (err) {
     pushLog('Invalid JSON: ' + err.message);
   }
@@ -688,12 +578,13 @@ function addSubscription() {
   }
 
   const unsub = fabric.subscribe(topic, (message) => {
+    pushLog(`Message received on ${topic}: ${JSON.stringify(message.data)}`);
     messages.value.unshift({
-      topic: message.topic,
-      from: message.from,
-      data: message.data,
+      topic: message.topic || topic,
+      from: message.from || 'unknown',
+      data: message.data || {},
       messageId: `${message.from}-${message.topic}-${Date.now()}`,
-      receivedAt: message.timestamp || Date.now()
+      receivedAt: message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
     });
     if (messages.value.length > 50) messages.value.pop();
   });

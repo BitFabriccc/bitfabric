@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BitFabric Documentation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      color: white;
+      margin-bottom: 50px;
+    }
+
+    header h1 {
+      font-size: 3em;
+      margin-bottom: 10px;
+    }
+
+    header p {
+      font-size: 1.2em;
+      opacity: 0.95;
+    }
+
+    .docs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin-bottom: 50px;
+    }
+
+    .doc-card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .doc-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .doc-card .icon {
+      font-size: 3em;
+      margin-bottom: 15px;
+    }
+
+    .doc-card h2 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 1.5em;
+    }
+
+    .doc-card p {
+      color: #666;
+      margin-bottom: 20px;
+      flex-grow: 1;
+    }
+
+    .doc-card .cta {
+      color: #667eea;
+      font-weight: 600;
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .doc-card .cta::after {
+      content: '→';
+    }
+
+    footer {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      color: white;
+    }
+
+    footer h3 {
+      margin-bottom: 15px;
+      font-size: 1.2em;
+    }
+
+    footer p {
+      margin-bottom: 10px;
+    }
+
+    footer a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 500;
+      margin: 0 15px;
+      display: inline-block;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 2em;
+      }
+
+      .docs-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📚 BitFabric Docs</h1>
+      <p>Enterprise pub/sub messaging with Gun + Nostr</p>
+    </header>
+
+    <div class="docs-grid">
+      <!-- Quickstart -->
+      <a href="quickstart.html" class="doc-card">
+        <div class="icon">🚀</div>
+        <h2>Quickstart</h2>
+        <p>Get started in 5 minutes. Installation, basic usage, and simple examples to get you up and running.</p>
+        <div class="cta">View Guide</div>
+      </a>
+
+      <!-- API Reference -->
+      <a href="api.html" class="doc-card">
+        <div class="icon">📖</div>
+        <h2>API Reference</h2>
+        <p>Complete API documentation. All methods, parameters, return values, and event handlers.</p>
+        <div class="cta">Full Reference</div>
+      </a>
+
+      <!-- Examples -->
+      <a href="examples.html" class="doc-card">
+        <div class="icon">💡</div>
+        <h2>Advanced Examples</h2>
+        <p>Real-world patterns. Chat apps, event broadcasting, multi-room coordination, and error recovery.</p>
+        <div class="cta">View Examples</div>
+      </a>
+
+      <!-- Deployment -->
+      <a href="deployment.html" class="doc-card">
+        <div class="icon">🌍</div>
+        <h2>Deployment</h2>
+        <p>Deploy to production. Cloudflare Pages, environment setup, CI/CD, and monitoring.</p>
+        <div class="cta">Deploy Guide</div>
+      </a>
+
+      <!-- Architecture -->
+      <a href="../src/fabric/README.md" class="doc-card">
+        <div class="icon">🏗️</div>
+        <h2>Architecture</h2>
+        <p>How BitFabric works. Transport layer, encryption, message flow, and design principles.</p>
+        <div class="cta">Architecture</div>
+      </a>
+
+      <!-- GitHub -->
+      <a href="https://github.com/your-username/bitfabric" class="doc-card" style="background: #2d2d2d; color: white;">
+        <div class="icon">⭐</div>
+        <h2>GitHub</h2>
+        <p>View source code, report issues, contribute, and give us a star!</p>
+        <div class="cta" style="color: #fff;">View Repo</div>
+      </a>
+    </div>
+
+    <footer>
+      <h3>Quick Links</h3>
+      <div>
+        <a href="quickstart.html">Quickstart</a>
+        <a href="api.html">API</a>
+        <a href="examples.html">Examples</a>
+        <a href="deployment.html">Deploy</a>
+      </div>
+      <p style="margin-top: 20px; font-size: 0.9em;">BitFabric © 2026 • MIT Licensed</p>
+    </footer>
+  </div>
+</body>
+</html>

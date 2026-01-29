@@ -1,0 +1,78 @@
+# Publishing BitFabric to NPM
+
+## Step 1: Update package.json
+
+```json
+{
+  "name": "bitfabric",
+  "version": "0.1.0",
+  "description": "Enterprise-grade pub/sub messaging with Gun and Nostr",
+  "type": "module",
+  "main": "./dist/fabric/index.js",
+  "exports": {
+    ".": "./dist/fabric/index.js",
+    "./fabric": "./dist/fabric/index.js",
+    "./nostr": "./dist/nostr/nostrClient.js"
+  },
+  "files": ["dist", "src/fabric", "src/nostr"],
+  "keywords": ["pubsub", "gun", "nostr", "messaging"],
+  "license": "MIT"
+}
+```
+
+## Step 2: Build the Library
+
+```bash
+npm run build
+npm run build:lib
+```
+
+## Step 3: Create NPM Account
+
+```bash
+npm adduser
+```
+
+## Step 4: Publish to NPM
+
+```bash
+npm publish
+```
+
+## Step 5: Users Install It
+
+```bash
+npm install bitfabric
+```
+
+## Usage After Install
+
+```javascript
+import { PubSubFabric } from 'bitfabric';
+
+const fabric = new PubSubFabric({ roomId: 'my-room' });
+await fabric.init();
+fabric.subscribe('messages', (msg) => console.log(msg));
+fabric.publish('messages', { text: 'Hello!' });
+```
+
+---
+
+## Quick Setup
+
+Want to publish now? Run:
+
+```bash
+# 1. Update package.json (change name from "bitfabric-web" to "bitfabric")
+# 2. Build
+npm run build
+
+# 3. Login to npm
+npm adduser
+
+# 4. Publish
+npm publish
+
+# Done! Users can now install:
+# npm install bitfabric
+```

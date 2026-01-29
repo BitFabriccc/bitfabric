@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BitFabric Quickstart</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    header p {
+      font-size: 1.1em;
+      opacity: 0.95;
+    }
+
+    main {
+      padding: 40px 30px;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      color: #667eea;
+      margin: 30px 0 15px 0;
+      font-size: 1.8em;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    h3 {
+      color: #764ba2;
+      margin: 20px 0 10px 0;
+      font-size: 1.2em;
+    }
+
+    p {
+      margin-bottom: 15px;
+      color: #555;
+    }
+
+    code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      color: #d63384;
+    }
+
+    pre {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 15px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 0.95em;
+      line-height: 1.5;
+      border-left: 4px solid #667eea;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .keyword { color: #f92672; }
+    .string { color: #e6db74; }
+    .function { color: #a6e22e; }
+    .comment { color: #75715e; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background: #f5f5f5;
+      font-weight: 600;
+      color: #667eea;
+    }
+
+    tr:hover {
+      background: #f9f9f9;
+    }
+
+    .note {
+      background: #e8f4f8;
+      border-left: 4px solid #0288d1;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+
+    .note strong {
+      color: #0288d1;
+    }
+
+    ul {
+      margin: 15px 0 15px 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    .code-section {
+      margin: 20px 0;
+    }
+
+    footer {
+      background: #f8f9fa;
+      padding: 20px;
+      text-align: center;
+      color: #666;
+      font-size: 0.9em;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 2em;
+      }
+      
+      main {
+        padding: 20px;
+      }
+
+      h2 {
+        font-size: 1.5em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⚡ BitFabric Quickstart</h1>
+      <p>Get started with pub/sub messaging in minutes</p>
+    </header>
+
+    <main>
+      <!-- Installation -->
+      <section>
+        <h2>Installation</h2>
+        <p>Clone and run the development server:</p>
+        <pre><code>npm install
+npm run dev
+# Open http://localhost:5173</code></pre>
+      </section>
+
+      <!-- Basic Usage -->
+      <section>
+        <h2>Basic Usage</h2>
+
+        <h3>1. Initialize the Fabric</h3>
+        <p>Create a new pub/sub fabric instance:</p>
+        <div class="code-section">
+          <pre><code><span class="keyword">import</span> { PubSubFabric } <span class="keyword">from</span> <span class="string">'./src/fabric/index.js'</span>;
+
+<span class="keyword">const</span> fabric = <span class="keyword">new</span> PubSubFabric({
+  roomId: <span class="string">'my-chat-room'</span>,
+  nostrRelays: [<span class="string">'wss://relay.damus.io'</span>, <span class="string">'wss://relay.nostr.band'</span>]
+});
+
+<span class="keyword">await</span> fabric.<span class="function">init</span>();</code></pre>
+        </div>
+
+        <h3>2. Subscribe to a Topic</h3>
+        <p>Listen for messages on a topic:</p>
+        <div class="code-section">
+          <pre><code>fabric.<span class="function">subscribe</span>(<span class="string">'messages'</span>, (message) => {
+  console.<span class="function">log</span>(<span class="string">`${message.from}: ${message.data.text}`</span>);
+});</code></pre>
+        </div>
+
+        <h3>3. Publish a Message</h3>
+        <p>Send data to all subscribers:</p>
+        <div class="code-section">
+          <pre><code>fabric.<span class="function">publish</span>(<span class="string">'messages'</span>, { 
+  text: <span class="string">'Hello from BitFabric!'</span>,
+  timestamp: Date.<span class="function">now</span>()
+});</code></pre>
+        </div>
+
+        <h3>4. Unsubscribe</h3>
+        <p>Stop listening to a topic:</p>
+        <div class="code-section">
+          <pre><code><span class="keyword">const</span> unsubscribe = fabric.<span class="function">subscribe</span>(<span class="string">'events'</span>, handler);
+<span class="comment">// Later...</span>
+<span class="function">unsubscribe</span>();</code></pre>
+        </div>
+      </section>
+
+      <!-- Chat Demo -->
+      <section>
+        <h2>Chat Demo Example</h2>
+        <p>Complete working example:</p>
+        <div class="code-section">
+          <pre><code><span class="keyword">import</span> { createChatDemo } <span class="keyword">from</span> <span class="string">'./src/fabric/demo.js'</span>;
+
+<span class="comment">// Create a chat room</span>
+<span class="keyword">const</span> chat = <span class="keyword">await</span> <span class="function">createChatDemo</span>(<span class="string">'room-name'</span>);
+
+<span class="comment">// Send messages</span>
+chat.<span class="function">sendMessage</span>(<span class="string">'Hello everyone!'</span>);
+
+<span class="comment">// View stats</span>
+console.<span class="function">log</span>(chat.<span class="function">getStats</span>());
+<span class="comment">// { messagesSent: 1, messagesReceived: 0, peersOnline: 1 }</span>
+
+<span class="comment">// Cleanup</span>
+<span class="keyword">await</span> chat.<span class="function">destroy</span>();</code></pre>
+        </div>
+      </section>
+
+      <!-- Multi-Topic Example -->
+      <section>
+        <h2>Subscribe to Multiple Topics</h2>
+        <p>Listen to several channels at once:</p>
+        <div class="code-section">
+          <pre><code><span class="keyword">const</span> topics = [<span class="string">'chat'</span>, <span class="string">'notifications'</span>, <span class="string">'system'</span>];
+
+topics.<span class="function">forEach</span>(topic => {
+  fabric.<span class="function">subscribe</span>(topic, (message) => {
+    console.<span class="function">log</span>(<span class="string">`[${topic}] from ${message.from}:`</span>, message.data);
+  });
+});</code></pre>
+        </div>
+      </section>
+
+      <!-- Publishing with Metadata -->
+      <section>
+        <h2>Publish with Metadata</h2>
+        <p>Send structured data:</p>
+        <div class="code-section">
+          <pre><code>fabric.<span class="function">publish</span>(<span class="string">'data'</span>, {
+  type: <span class="string">'sensor'</span>,
+  value: 42,
+  location: <span class="string">'living-room'</span>,
+  timestamp: Date.<span class="function">now</span>()
+});</code></pre>
+        </div>
+      </section>
+
+      <!-- Architecture -->
+      <section>
+        <h2>How It Works</h2>
+        <p>BitFabric uses a dual-transport pub/sub architecture:</p>
+        <table>
+          <tr>
+            <th>Component</th>
+            <th>Role</th>
+          </tr>
+          <tr>
+            <td><strong>Gun</strong></td>
+            <td>Primary distributed database sync</td>
+          </tr>
+          <tr>
+            <td><strong>Nostr</strong></td>
+            <td>Secondary relay layer for reach</td>
+          </tr>
+          <tr>
+            <td><strong>UnSEA</strong></td>
+            <td>End-to-end encryption for all messages</td>
+          </tr>
+          <tr>
+            <td><strong>No WebRTC</strong></td>
+            <td>Direct relay-based messaging (simpler, faster)</td>
+          </tr>
+        </table>
+
+        <div class="note">
+          <strong>Message Flow:</strong> Client → Gun Relay (encrypted) → Subscribers + Nostr Relay (encrypted) → Additional reach
+        </div>
+      </section>
+
+      <!-- Configuration -->
+      <section>
+        <h2>Configuration</h2>
+        <p>Customize your fabric instance:</p>
+        <div class="code-section">
+          <pre><code><span class="keyword">const</span> fabric = <span class="keyword">new</span> PubSubFabric({
+  roomId: <span class="string">'required-room-id'</span>,           <span class="comment">// Room identifier</span>
+  nostrRelays: [                        <span class="comment">// Optional relay list</span>
+    <span class="string">'wss://nos.lol'</span>,
+    <span class="string">'wss://relay.damus.io'</span>
+  ]
+});</code></pre>
+        </div>
+      </section>
+
+      <!-- Error Handling -->
+      <section>
+        <h2>Error Handling</h2>
+        <p>Handle connection errors gracefully:</p>
+        <div class="code-section">
+          <pre><code><span class="keyword">try</span> {
+  <span class="keyword">await</span> fabric.<span class="function">init</span>();
+} <span class="keyword">catch</span> (err) {
+  console.<span class="function">error</span>(<span class="string">'Failed to initialize fabric:'</span>, err);
+}
+
+fabric.<span class="function">on</span>(<span class="string">'error'</span>, (error) => {
+  console.<span class="function">error</span>(<span class="string">'Transport error:'</span>, error);
+});</code></pre>
+        </div>
+      </section>
+
+      <!-- Performance Tips -->
+      <section>
+        <h2>Performance Tips</h2>
+        <ul>
+          <li><strong>Batch messages</strong> - Group related publishes together</li>
+          <li><strong>Limit subscriptions</strong> - Only subscribe to topics you need</li>
+          <li><strong>Cache topics</strong> - Reuse fabric instances for same room</li>
+          <li><strong>Monitor stats</strong> - Use <code>getStats()</code> to track performance</li>
+        </ul>
+      </section>
+
+      <!-- Next Steps -->
+      <section>
+        <h2>Next Steps</h2>
+        <ul>
+          <li>📚 Read full <strong>API documentation</strong> for all methods</li>
+          <li>🔍 Explore <strong>advanced examples</strong> (chat, events, monitoring)</li>
+          <li>🚀 Learn about <strong>deployment</strong> to Cloudflare Pages</li>
+          <li>💬 Check the <strong>architecture README</strong> for deep dives</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      <p>BitFabric • Pub/Sub Messaging with Gun + Nostr</p>
+      <p>MIT Licensed</p>
+    </footer>
+  </div>
+</body>
+</html>
