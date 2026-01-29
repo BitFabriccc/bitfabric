@@ -4,7 +4,7 @@ export async function onRequestPost(context) {
   
   try {
     const body = await request.json();
-    const { email } = body;
+    const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
     
     if (!email) {
       return new Response(JSON.stringify({ error: 'Missing email' }), {
@@ -19,10 +19,10 @@ export async function onRequestPost(context) {
       'daniel@bitfabric.cc'
     ];
     
-    const isPremium = PREMIUM_WHITELIST.includes(email.toLowerCase());
+    const isPremium = PREMIUM_WHITELIST.includes(email);
     
     return new Response(JSON.stringify({ 
-      email: email.toLowerCase(),
+      email,
       isPremium: isPremium 
     }), {
       status: 200,

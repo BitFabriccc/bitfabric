@@ -5,31 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Get API Key - BitFabric</title>
   <script>
-    // Check if email is whitelisted and auto-authenticate
-    (async () => {
-      const emailParam = new URLSearchParams(window.location.search).get('email');
-      if (emailParam) {
-        try {
-          const authResponse = await fetch('/api/authenticate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: emailParam })
-          });
-          
-          if (authResponse.ok) {
-            const authData = await authResponse.json();
-            // Whitelisted user - redirect to main app with session
-            sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
-            sessionStorage.setItem('bitfabric-email', authData.email);
-            sessionStorage.setItem('bitfabric-password-hash', 'premium-whitelisted');
-            window.location.href = '/';
-          }
-        } catch (error) {
-          console.error('Error authenticating:', error);
-          // Continue to signup form if not whitelisted
-        }
-      }
-    })();
+    // Password is required; just prefill email if provided.
+    window.__prefillEmail = new URLSearchParams(window.location.search).get('email') || '';
+    window.addEventListener('DOMContentLoaded', () => {
+      if (!window.__prefillEmail) return;
+      const input = document.getElementById('email');
+      if (input && !input.value) input.value = window.__prefillEmail;
+    });
   </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -214,27 +196,7 @@
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
     
-    // Generate deterministic session key from email + password hash
-    async function generateDeterministicKey(email, passwordHash) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(`bitfabric-${email.toLowerCase()}-${passwordHash}`);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      // Format as UUID
-      return `${hash.substr(0,8)}-${hash.substr(8,4)}-${hash.substr(12,4)}-${hash.substr(16,4)}-${hash.substr(20,12)}`;
-    }
-    
-    // Generate deterministic Default key from email + password hash (secure!)
-    async function generateDefaultKey(email, passwordHash) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(`bitfabric-default-${email.toLowerCase()}-${passwordHash}`);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      // Format as UUID
-      return `${hash.substr(0,8)}-${hash.substr(8,4)}-${hash.substr(12,4)}-${hash.substr(16,4)}-${hash.substr(20,12)}`;
-    }
+    // Keys are issued by the server. (Email is required for all keys.)
     
     async function generateKey() {
       const email = document.getElementById('email').value;
@@ -259,52 +221,38 @@
       resultDiv.classList.remove('show');
       
       try {
-        // Check premium status on server
-        let isPremium = false;
-        try {
-          const premiumResponse = await fetch('/api/premium-check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email })
-          });
-          if (premiumResponse.ok) {
-            const premiumData = await premiumResponse.json();
-            isPremium = premiumData.isPremium;
-          }
-        } catch (error) {
-          console.error('Error checking premium status:', error);
-        }
-        
-        // Hash password securely
+        // Hash password for local storage consistency (server-issued key does not depend on it)
         const hashedPassword = await hashPassword(password);
-        
-        // Generate deterministic session key from email + password hash
-        const sessionKey = await generateDeterministicKey(email, hashedPassword);
-        
-        // Store credentials in sessionStorage (cleared on browser close)
-        sessionStorage.setItem('bitfabric-api-key', sessionKey);
-        sessionStorage.setItem('bitfabric-email', email.toLowerCase());
-        sessionStorage.setItem('bitfabric-password-hash', hashedPassword);
-        
-        // Create secure Default API key (requires password to generate)
-        if (isPremium) {
-          const defaultKeyValue = await generateDefaultKey(email, hashedPassword);
-          const defaultKey = {
-            id: 'default',
-            name: 'Default',
-            description: 'Your default API key',
-            value: defaultKeyValue,
-            createdAt: Date.now(),
-            permanent: true
-          };
-          sessionStorage.setItem(`bitfabric-api-keys-${email.toLowerCase()}`, JSON.stringify([defaultKey]));
+
+        // Always request a server-issued key (email required)
+        const authResponse = await fetch('/api/authenticate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, passwordHash: hashedPassword })
+        });
+
+        if (!authResponse.ok) {
+          const err = await authResponse.json().catch(() => ({}));
+          showError(err?.error || 'Failed to create account. Please try again.');
+          return;
         }
-        
-        document.getElementById('apiKey').textContent = sessionKey;
+
+        const authData = await authResponse.json();
+        if (!authData?.authenticated || !authData?.sessionKey) {
+          showError('Failed to create account. Please try again.');
+          return;
+        }
+
+        sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
+        sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
+        sessionStorage.setItem('bitfabric-email', authData.email);
+        sessionStorage.setItem('bitfabric-password-hash', hashedPassword);
+
+        document.getElementById('apiKey').textContent = authData.sessionKey;
         resultDiv.classList.add('show');
-        
+
         // Add premium notice if applicable
-        if (isPremium) {
+        if (authData.isPremium) {
           const premiumNotice = document.createElement('div');
           premiumNotice.style.cssText = 'background: #f0fff4; border-left: 4px solid #48bb78; padding: 12px; margin: 12px 0; border-radius: 4px; color: #22543d; font-weight: 500;';
           premiumNotice.textContent = '⭐ Premium Account: Unlimited everything, forever!';

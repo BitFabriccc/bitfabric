@@ -1,17 +1,27 @@
--- D1 Database Schema for BitFabric API Keys
-DROP TABLE IF EXISTS api_keys;
+-- BitFabric D1 schema
+-- Goal: ONE account can have MANY API keys.
+--
+-- Key rules:
+-- - (account_id, key_id) uniquely identifies a key row
+-- - value is globally unique (used as the public API key string)
 
-CREATE TABLE api_keys (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  account_id TEXT NOT NULL UNIQUE,
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS api_keys (
+  account_id TEXT NOT NULL,
   key_id TEXT NOT NULL,
-  name TEXT NOT NULL,
+  name TEXT,
   description TEXT,
-  value TEXT NOT NULL UNIQUE,
+  value TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  permanent INTEGER DEFAULT 0,
-  UNIQUE(account_id, key_id)
+  permanent INTEGER NOT NULL DEFAULT 0,
+
+  PRIMARY KEY (account_id, key_id),
+  UNIQUE (value),
+
+  -- No separate accounts table required.
+  -- The account_id groups keys; key_id distinguishes keys within an account.
 );
 
-CREATE INDEX idx_account_id ON api_keys(account_id);
-CREATE INDEX idx_key_value ON api_keys(value);
+CREATE INDEX IF NOT EXISTS idx_api_keys_account_id ON api_keys(account_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_value ON api_keys(value);

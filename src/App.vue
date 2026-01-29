@@ -11,7 +11,7 @@
         </p>
         
         <!-- Not signed in -->
-        <div v-if="!roomId" class="signin-banner">
+        <div v-if="!isEmailAuthed" class="signin-banner">
           <div class="signin-content">
             <h2>🚀 Sign In to BitFabric</h2>
             <p>Enter your email and password to access your account</p>
@@ -51,9 +51,15 @@
         <!-- Signed in -->
         <div v-else>
           <div class="meta">
-            <span class="tag">{{ userEmail }}</span>
+            <span v-if="userEmail" class="tag">{{ userEmail }}</span>
             <span class="tag">API Key: {{ roomId }}</span>
           </div>
+
+          <div class="field" style="max-width: 520px; margin-top: 10px;">
+            <label for="roomSignedIn">API Key (paste to test)</label>
+            <input id="roomSignedIn" v-model="roomId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+          </div>
+
           <div class="hero-actions">
             <button class="btn-primary" :disabled="isConnecting || isReady" @click="connect">
               {{ isConnecting ? 'Connecting…' : isReady ? 'Connected' : 'Connect' }}
@@ -65,20 +71,10 @@
       </section>
 
       <div class="card-grid">
-        <!-- Session card only shown when not signed in -->
-        <div class="card" v-if="!roomId">
+        <!-- No key-only sessions: email required for all -->
+        <div class="card" v-if="!isEmailAuthed">
           <h3>Session</h3>
-          <p class="muted">Sign in with your API key or <a href="/signup.html" style="color: #667eea; font-weight: 600;">create a free account</a>.</p>
-          <div class="field">
-            <label for="room">API Key</label>
-            <input id="room" v-model="roomId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
-          </div>
-          <div class="hero-actions" style="margin-top: 8px;">
-            <button class="btn-primary" :disabled="isConnecting || isReady" @click="connect">
-              {{ isConnecting ? 'Connecting…' : 'Connect' }}
-            </button>
-            <button class="btn-ghost" :disabled="!isReady && !fabric" @click="disconnect">Reset</button>
-          </div>
+          <p class="muted">Email is required to use BitFabric. Please sign in above or <a href="/signup.html" style="color: #667eea; font-weight: 600;">create a free account</a>.</p>
         </div>
 
         <div class="card">
@@ -240,6 +236,7 @@ import { PubSubFabric } from './fabric/index.js';
 // Check sessionStorage for stored API key (don't use URL for security)
 const storedApiKey = sessionStorage.getItem('bitfabric-api-key');
 const roomId = ref(storedApiKey || '');
+const authApiKey = ref(sessionStorage.getItem('bitfabric-auth-api-key') || '');
 const accountId = ref('');
 const signInEmail = ref('');
 const signInPassword = ref('');
@@ -256,6 +253,8 @@ const newKeyName = ref('');
 const newKeyDescription = ref('');
 const apiKeys = ref([]);
 
+const isEmailAuthed = computed(() => !!userEmail.value.trim());
+
 const stats = ref({
   messagesPublished: 0,
   messagesReceived: 0,
@@ -269,14 +268,16 @@ const stats = ref({
 // Load user data from sessionStorage and fetch keys from D1
 async function initializeFromStorage() {
   const storedEmail = sessionStorage.getItem('bitfabric-email');
+  const storedPasswordHash = sessionStorage.getItem('bitfabric-password-hash');
   if (!storedEmail) return;
+  if (!storedPasswordHash) return;
 
   // Always re-hydrate session from the server (D1 is source of truth)
   try {
     const authResponse = await fetch('/api/authenticate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: storedEmail })
+      body: JSON.stringify({ email: storedEmail, passwordHash: storedPasswordHash })
     });
 
     if (!authResponse.ok) return;
@@ -284,14 +285,21 @@ async function initializeFromStorage() {
     if (!authData?.authenticated) return;
 
     sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
+    sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
+    sessionStorage.setItem('bitfabric-password-hash', storedPasswordHash);
     roomId.value = authData.sessionKey;
+    authApiKey.value = authData.sessionKey;
     accountId.value = authData.accountId;
     userEmail.value = authData.email;
     userPlan.value = authData.plan || 'starter';
 
     // Fetch API keys from D1 database
     try {
-      const response = await fetch(`/api/keys?account_id=${encodeURIComponent(authData.accountId)}`);
+      const response = await fetch(`/api/keys?email=${encodeURIComponent(authData.email)}`, {
+        headers: {
+          'x-bitfabric-password-hash': storedPasswordHash
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         apiKeys.value = data.keys || [];
@@ -307,19 +315,22 @@ async function initializeFromStorage() {
 }
 
 // Helper: create key in database (using immutable account ID)
-async function createKeyInDB(keyName, keyDescription, keyValue) {
+async function createKeyInDB(keyName, keyDescription) {
   try {
+    const passwordHash = sessionStorage.getItem('bitfabric-password-hash') || '';
     const response = await fetch('/api/keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        account_id: accountId.value,
+        email: userEmail.value,
+        passwordHash,
         keyName,
-        keyDescription,
-        keyValue
+        keyDescription
       })
     });
-    return response.ok;
+    if (!response.ok) return false;
+    const data = await response.json().catch(() => ({}));
+    return data?.key || true;
   } catch (error) {
     pushLog('Error creating API key: ' + error.message);
     return false;
@@ -367,19 +378,27 @@ const emailParam = new URLSearchParams(window.location.search).get('email');
 if (emailParam) {
   (async () => {
     try {
+      const storedPasswordHash = sessionStorage.getItem('bitfabric-password-hash');
+      // Password is required; only auto-auth if we already have a stored hash.
+      if (!storedPasswordHash) {
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
       const authResponse = await fetch('/api/authenticate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailParam })
+        body: JSON.stringify({ email: emailParam, passwordHash: storedPasswordHash })
       });
       
       if (authResponse.ok) {
         const authData = await authResponse.json();
         // Auto-authenticate whitelisted user
         sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
+        sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
         sessionStorage.setItem('bitfabric-email', authData.email);
-        sessionStorage.setItem('bitfabric-password-hash', 'premium-whitelisted');
+        sessionStorage.setItem('bitfabric-password-hash', storedPasswordHash);
         roomId.value = authData.sessionKey;
+        authApiKey.value = authData.sessionKey;
         accountId.value = authData.accountId;
         userEmail.value = authData.email;
         userPlan.value = authData.plan;
@@ -417,12 +436,25 @@ async function signInWithEmail() {
   const password = signInPassword.value.trim();
   if (!email || !password) return;
 
+  // SHA-256 password hash (hex)
+  let passwordHash = '';
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    passwordHash = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    // If hashing fails, treat as sign-in failure
+    window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+    return;
+  }
+
   // Server-side auth (D1 is source of truth for the API key)
   try {
     const authResponse = await fetch('/api/authenticate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email, passwordHash })
     });
 
     if (!authResponse.ok) {
@@ -438,14 +470,21 @@ async function signInWithEmail() {
 
     sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
     sessionStorage.setItem('bitfabric-email', authData.email);
+    sessionStorage.setItem('bitfabric-password-hash', passwordHash);
     roomId.value = authData.sessionKey;
+    sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
+    authApiKey.value = authData.sessionKey;
     accountId.value = authData.accountId;
     userEmail.value = authData.email;
     userPlan.value = authData.plan;
 
     // Load keys list (DB)
     try {
-      const response = await fetch(`/api/keys?account_id=${encodeURIComponent(authData.accountId)}`);
+      const response = await fetch(`/api/keys?email=${encodeURIComponent(authData.email)}`, {
+        headers: {
+          'x-bitfabric-password-hash': passwordHash
+        }
+      });
       if (response.ok) {
         apiKeys.value = (await response.json()).keys || [];
       } else if (authData.defaultKey) {
@@ -470,6 +509,37 @@ function generateUUID() {
 
 async function connect() {
   if (isConnecting.value) return;
+  if (!isEmailAuthed.value) {
+    pushLog('Email sign-in required.');
+    status.value = 'error';
+    return;
+  }
+
+  // Server-side validation: reject any key not present in D1 for this email
+  try {
+    const validateResp = await fetch('/api/validate-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail.value, apiKey: roomId.value })
+    });
+    if (!validateResp.ok) {
+      const data = await validateResp.json().catch(() => ({}));
+      pushLog(data?.error || 'Invalid API key');
+      status.value = 'error';
+      return;
+    }
+    const validateData = await validateResp.json().catch(() => ({}));
+    if (!validateData?.valid) {
+      pushLog(validateData?.error || 'Invalid API key');
+      status.value = 'error';
+      return;
+    }
+  } catch (e) {
+    pushLog('Unable to validate API key');
+    status.value = 'error';
+    return;
+  }
+
   await disconnect();
   
   // Store API key in sessionStorage only (never in URL)
@@ -599,40 +669,36 @@ function createApiKey() {
   const name = newKeyName.value.trim();
   const description = newKeyDescription.value.trim();
   if (!name) return;
-  
-  // Generate unique API key
-  const keyValue = generateUUID();
-  
-  // Post to API
+
+  const passwordHash = sessionStorage.getItem('bitfabric-password-hash') || '';
+
+  // Post to API (server generates key value)
   fetch('/api/keys', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: userEmail.value,
-      passwordHash: sessionStorage.getItem('bitfabric-password-hash'),
+      passwordHash,
       keyName: name,
-      keyDescription: description,
-      keyValue: keyValue
+      keyDescription: description
     })
   }).then(response => {
     if (response.ok) {
-      // Add to local list
-      const newKey = {
-        key_id: generateUUID(),
-        name: name,
-        description: description,
-        value: keyValue,
-        created_at: Date.now(),
-        permanent: false
-      };
-      apiKeys.value.push(newKey);
-      
-      // Clear form
-      newKeyName.value = '';
-      newKeyDescription.value = '';
-      
-      pushLog(`Created API key: ${name}`);
+      return response.json().then(data => {
+        if (data?.key) {
+          apiKeys.value.push(data.key);
+          pushLog(`Created API key: ${name}`);
+        }
+        newKeyName.value = '';
+        newKeyDescription.value = '';
+      });
     }
+
+    return response.json().then(err => {
+      pushLog(err?.error || 'Error creating API key');
+    }).catch(() => {
+      pushLog('Error creating API key');
+    });
   }).catch(err => {
     pushLog('Error creating API key: ' + err.message);
   });
@@ -645,12 +711,15 @@ function deleteApiKey(keyId) {
     return;
   }
   
+  const passwordHash = sessionStorage.getItem('bitfabric-password-hash') || '';
+
   // Delete from API (using immutable account ID)
   fetch('/api/keys', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      account_id: accountId.value,
+      email: userEmail.value,
+      passwordHash,
       keyId: keyId
     })
   }).then(response => {
@@ -662,6 +731,12 @@ function deleteApiKey(keyId) {
         apiKeys.value.splice(index, 1);
         pushLog(`Deleted API key: ${keyName}`);
       }
+    } else {
+      return response.json().then(err => {
+        pushLog(err?.error || 'Error deleting API key');
+      }).catch(() => {
+        pushLog('Error deleting API key');
+      });
     }
   }).catch(err => {
     pushLog('Error deleting API key: ' + err.message);
@@ -671,11 +746,13 @@ function deleteApiKey(keyId) {
 function logout() {
   // Clear all sessionStorage data
   sessionStorage.removeItem('bitfabric-api-key');
+  sessionStorage.removeItem('bitfabric-auth-api-key');
   sessionStorage.removeItem('bitfabric-email');
   sessionStorage.removeItem('bitfabric-password-hash');
   
   // Clear UI
   roomId.value = '';
+  authApiKey.value = '';
   userEmail.value = '';
   userPlan.value = 'starter';
   apiKeys.value = [];

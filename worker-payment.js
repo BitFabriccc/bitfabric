@@ -23,7 +23,8 @@ export default {
 
 async function handleCheckout(request, env) {
   try {
-    const { paymentMethodId, email, plan, amount } = await request.json();
+    const { paymentMethodId, email: rawEmail, plan, amount } = await request.json();
+    const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
     
     if (!paymentMethodId || !email || !plan) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
