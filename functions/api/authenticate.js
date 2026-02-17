@@ -1,5 +1,7 @@
 // Cloudflare Pages Function - Server-side authentication for users (email + password hash)
 
+import { createVerificationToken, getVerificationExpiryMs, sendVerificationEmail } from './_email.js';
+
 function normalizeEmail(email) {
   if (typeof email !== 'string') return '';
   return email.trim().toLowerCase();
@@ -61,6 +63,9 @@ export async function onRequestPost(context) {
     
     const isPremium = isPremiumEmail(email);
     const plan = isPremium ? 'premium' : 'starter';
+
+    let emailVerified = false;
+    let verificationSent = false;
     
     const accountId = await computeAccountId(email);
     if (!accountId) {
@@ -73,14 +78,25 @@ export async function onRequestPost(context) {
     // Account record: create on first signup, else validate password
     try {
       const existingAccount = await env.DB.prepare(
-        'SELECT email, password_hash, plan, account_id FROM accounts WHERE email = ? LIMIT 1'
+        'SELECT email, password_hash, plan, account_id, email_verified FROM accounts WHERE email = ? LIMIT 1'
       ).bind(email).first();
 
       if (!existingAccount) {
+        const token = createVerificationToken();
+        const expiresAt = Date.now() + getVerificationExpiryMs();
+
         await env.DB.prepare(
-          'INSERT INTO accounts (email, password_hash, plan, account_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-        ).bind(email, passwordHash, plan, accountId, Date.now(), Date.now()).run();
+          'INSERT INTO accounts (email, password_hash, plan, account_id, created_at, updated_at, email_verified, verification_token, verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).bind(email, passwordHash, plan, accountId, Date.now(), Date.now(), 0, token, expiresAt).run();
+
+        const origin = new URL(request.url).origin;
+        const verifyUrl = `${origin}/api/verify-email?token=${encodeURIComponent(token)}`;
+        const sendRes = await sendVerificationEmail({ env, toEmail: email, verifyUrl });
+        verificationSent = !!sendRes?.ok;
+        emailVerified = false;
       } else {
+        emailVerified = Number(existingAccount.email_verified || 0) === 1;
+
         if ((existingAccount.password_hash || '').toLowerCase() !== passwordHash) {
           return new Response(JSON.stringify({ error: 'Invalid email or password', authenticated: false }), {
             status: 401,
@@ -149,6 +165,8 @@ export async function onRequestPost(context) {
       sessionKey,
       accountId: accountId,
       plan: isPremium ? 'premium' : 'starter',
+      emailVerified,
+      verificationSent,
       defaultKey: {
         key_id: 'default',
         name: 'Default',

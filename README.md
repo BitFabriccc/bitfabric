@@ -21,6 +21,21 @@ npm run preview
 
 The console lets you join a room and publish/subscribe to topics using Gun + Nostr.
 
+## Email Verification (Optional)
+
+This project supports email verification links, but you must configure an email provider for emails to actually send.
+
+- Endpoints:
+	- `POST /api/request-verification` with `{ email, passwordHash }`
+	- `GET /api/verify-email?token=...`
+	- New accounts trigger a verification email send attempt in `POST /api/authenticate`.
+
+- Provider (Resend): set the following environment variables on your Cloudflare Pages project:
+	- `RESEND_API_KEY`
+	- `MAIL_FROM` (example: `BitFabric <no-reply@yourdomain.com>`)
+
+If `RESEND_API_KEY`/`MAIL_FROM` are not set, the API will return `sent:false, skipped:true` and no email will be delivered.
+
 ## Library
 
 - Core pub/sub fabric lives in [src/fabric](src/fabric/README.md)
