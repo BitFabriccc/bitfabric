@@ -151,7 +151,7 @@
           <p v-else class="muted">Subscribed messages appear here.</p>
         </div>
 
-        <div class="card">
+        <div class="card" v-if="isEmailAuthed">
           <h3>API Keys</h3>
           <div v-if="userPlan === 'starter'" class="muted">
             <p>Upgrade to Professional or Enterprise to manage multiple API keys.</p>
