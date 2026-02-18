@@ -8,7 +8,7 @@
 
 import { createNostrClient } from '../nostr/nostrClient.js';
 import Gun from 'gun';
-import { encryptMessageWithMeta, decryptMessageWithMeta, generateRandomPair } from 'unsea';
+
 
 const ACTIVE_GUN_RELAYS = [
   'https://relay.peer.ooo/gun'
@@ -18,21 +18,21 @@ export class PubSubTransport {
   constructor(config = {}) {
     this.roomId = config.roomId;
     this.peerId = config.peerId;
-    
+
     // Use API key as the channel (isolated per user)
     this.channel = this.roomId || 'default';
-    
+
     // Transport clients
     this.nostrClients = [];
     this.gun = null;
-    
+
     // Config
     // Primary relays first - try to use these
     this.primaryRelays = [
       'wss://nos.lol',
       'wss://relay.primal.net'
     ];
-    
+
     this.nostrRelays = config.nostrRelays || [
       'wss://nos.lol',
       'wss://relay.primal.net',
@@ -41,50 +41,44 @@ export class PubSubTransport {
       'wss://nostr.wine',
       'wss://relay.damus.io'
     ];
-    
+
     // Topic subscriptions: topic -> Set<callback>
     this.subscriptions = new Map();
-    
+
     // Message cache: topic -> last message (for replay on subscribe)
     this.topicCache = new Map();
-    
+
     // Message deduplication
     this.seenMessages = new Set();
     this.maxSeenMessages = 1000;
-    
+
     // Stats
     this.stats = {
       transport1: { published: 0, received: 0 },
       transport2: { published: 0, received: 0 }
     };
   }
-  
+
   /**
    * Initialize transports
    */
   async init() {
-    
-    // Generate UnSEA keypair for end-to-end encryption
-    try {
-      this.keyPair = await generateRandomPair();
-    } catch (err) {
-      // Silently handle keypair generation
-    }
-    
+
+
     // Initialize Nostr first to get peer ID
     await this.initNostr();
-    
+
     // Ensure we have a peer ID
     if (!this.peerId) {
       throw new Error('Failed to initialize Nostr relays - no peer ID obtained');
     }
-    
+
     // Initialize Gun secondary transport
     await this.initGun();
-    
+
     return this.peerId;
   }
-  
+
   /**
    * Initialize network relays - try primary first, stop once connected
    */
@@ -104,7 +98,7 @@ export class PubSubTransport {
         // Continue to next relay
       }
     }
-    
+
     // If primary relays didn't connect, try fallbacks one more time
     const fallbackRelays = this.nostrRelays.filter(r => !this.primaryRelays.includes(r));
     for (const relayUrl of fallbackRelays) {
@@ -122,7 +116,7 @@ export class PubSubTransport {
       }
     }
   }
-  
+
   /**
    * Initialize a single relay connection
    */
@@ -141,23 +135,23 @@ export class PubSubTransport {
           // Relay state changes (connecting/connected/error)
         }
       });
-      
+
       await client.connect().catch(err => {
         // Silently fail on connection errors - don't propagate
         throw err;
       });
       this.nostrClients.push(client);
-      
+
       // Set peer ID from first successful connection
       if (!this.peerId) {
         this.peerId = client.getPublicKeyHex();
       }
-      
+
     } catch (err) {
       // Silently handle connection failures - no console spam
     }
   }
-  
+
   /**
    * Initialize secondary network relay
    */
@@ -171,84 +165,124 @@ export class PubSubTransport {
         this.peerId = `peer-${Math.random().toString(36).slice(2)}-${Date.now()}`;
       }
     }
-    
+
     try {
       this.gun = Gun(ACTIVE_GUN_RELAYS);
-      
+
       const room = this.gun.get(`pubsub-${this.channel}`);
-      
+
       // Listen to all topics
       room.get('messages').map().on((message, messageId) => {
         if (!message || !message.data) return;
-        
+
         try {
           const data = typeof message.data === 'string' ? JSON.parse(message.data) : message.data;
-          
+
           this.stats.transport2.received++;
           this.handleMessage('gun', data.from, data).catch(err => {
             // Silently handle message processing errors
           });
-          
+
         } catch (err) {
           // Silently handle parse errors
         }
       });
-      
-      
+
+
     } catch (err) {
       // Silently handle init errors
     }
   }
-  
+
   /**
-   * Handle incoming message from any transport (with UnSEA decryption)
+   * Derive an AES-GCM key from the SHA-256 hash of a topic string.
+   * All clients on the same topic share the same key.
+   */
+  async _getTopicKey(topic) {
+    if (this._topicKeys && this._topicKeys.has(topic)) {
+      return this._topicKeys.get(topic);
+    }
+    if (!this._topicKeys) this._topicKeys = new Map();
+
+    const enc = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', enc.encode(topic));
+    const key = await crypto.subtle.importKey(
+      'raw', hashBuffer, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']
+    );
+    this._topicKeys.set(topic, key);
+    return key;
+  }
+
+  /**
+   * Encrypt data with the topic-derived AES-GCM key.
+   * Returns { iv, ciphertext } both as base64 strings.
+   */
+  async _encryptForTopic(topic, data) {
+    const key = await this._getTopicKey(topic);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const enc = new TextEncoder();
+    const cipherBuffer = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      enc.encode(JSON.stringify(data))
+    );
+    const toBase64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+    return { iv: toBase64(iv), ciphertext: toBase64(cipherBuffer) };
+  }
+
+  /**
+   * Decrypt data with the topic-derived AES-GCM key.
+   */
+  async _decryptForTopic(topic, iv, ciphertext) {
+    const key = await this._getTopicKey(topic);
+    const fromBase64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+    const dec = new TextDecoder();
+    const plainBuffer = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: fromBase64(iv) },
+      key,
+      fromBase64(ciphertext)
+    );
+    return JSON.parse(dec.decode(plainBuffer));
+  }
+
+  /**
+   * Handle incoming message from any transport
    */
   async handleMessage(source, from, payload) {
-    // Process incoming message from network
-    if (!payload || !payload.topic) {
-      return;
-    }
+    if (!payload || !payload.topic) return;
+
     let decryptedPayload = { ...payload };
-    if (payload.encrypted && this.keyPair?.priv) {
+
+    // Topic-derived AES-GCM decryption
+    if (payload.topicEncrypted && payload.iv && payload.ciphertext) {
       try {
-        const decrypted = await decryptMessageWithMeta(
-          payload.encrypted,
-          this.keyPair.priv
+        decryptedPayload.data = await this._decryptForTopic(
+          payload.topic, payload.iv, payload.ciphertext
         );
-        decryptedPayload.data = JSON.parse(decrypted);
-        delete decryptedPayload.encrypted;
+        delete decryptedPayload.topicEncrypted;
+        delete decryptedPayload.iv;
+        delete decryptedPayload.ciphertext;
       } catch (err) {
-        return; // Unable to decrypt, skip
+        return; // Wrong topic key or corrupted — drop
       }
-    } else {
-      // Fallback for non-encrypted messages
-      if (!decryptedPayload.data) {
-        decryptedPayload.data = payload.data;
-      }
+    } else if (!decryptedPayload.data) {
+      decryptedPayload.data = payload.data;
     }
-    
-    // Create message ID for deduplication — use messageId if present, else content hash
+
+    // Deduplication — use messageId if present
     const msgId = payload.messageId
       ? payload.messageId
       : `${from}-${decryptedPayload.topic}-${JSON.stringify(decryptedPayload.data)}-${decryptedPayload.timestamp || ''}`;
-    
-    if (this.seenMessages.has(msgId)) {
-      // Duplicate message skipped (deduplication)
-      return; // Already processed
-    }
-    
+
+    if (this.seenMessages.has(msgId)) return;
     this.seenMessages.add(msgId);
-    
-    // Cleanup old messages
+
     if (this.seenMessages.size > this.maxSeenMessages) {
       const toDelete = Array.from(this.seenMessages).slice(0, 100);
       toDelete.forEach(id => this.seenMessages.delete(id));
     }
-    
-    // Route to topic subscribers
+
     const topic = decryptedPayload.topic;
-    
-    // Cache this message for the topic (for replay to future subscribers)
     const cachedMessage = {
       source,
       from,
@@ -257,19 +291,15 @@ export class PubSubTransport {
       timestamp: decryptedPayload.timestamp
     };
     this.topicCache.set(topic, cachedMessage);
-    
+
     if (topic && this.subscriptions.has(topic)) {
       const callbacks = this.subscriptions.get(topic);
       callbacks.forEach(callback => {
-        try {
-          callback(cachedMessage);
-        } catch (err) {
-          // Silently handle callback errors
-        }
+        try { callback(cachedMessage); } catch (err) { }
       });
     }
   }
-  
+
   /**
    * Subscribe to a topic
    */
@@ -277,104 +307,92 @@ export class PubSubTransport {
     if (!this.subscriptions.has(topic)) {
       this.subscriptions.set(topic, new Set());
     }
-    
+
     this.subscriptions.get(topic).add(callback);
-    
+
     // Deliver cached message immediately if one exists for this topic
     if (this.topicCache.has(topic)) {
       const cachedMessage = this.topicCache.get(topic);
       setTimeout(() => {
-        try {
-          callback(cachedMessage);
-        } catch (err) {
-          // Silently handle callback errors
-        }
+        try { callback(cachedMessage); } catch (err) { }
       }, 0);
     }
-    
+
     return () => this.unsubscribe(topic, callback);
   }
-  
+
   /**
    * Unsubscribe from a topic
    */
   unsubscribe(topic, callback) {
     if (this.subscriptions.has(topic)) {
       this.subscriptions.get(topic).delete(callback);
-      
       if (this.subscriptions.get(topic).size === 0) {
         this.subscriptions.delete(topic);
       }
     }
   }
-  
+
   /**
-   * Publish a message to a topic (encrypted with UnSEA)
+   * Publish a message to a topic — encrypted with topic-derived AES-GCM key
    */
   async publish(topic, data) {
     const messageId = `${this.peerId}-${topic}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    // Encrypt payload with topic-derived key
+    let encrypted;
+    try {
+      encrypted = await this._encryptForTopic(topic, data);
+    } catch (err) {
+      encrypted = null;
+    }
+
     const message = {
       messageId,
       from: this.peerId,
       topic,
-      data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      ...(encrypted
+        ? { topicEncrypted: true, iv: encrypted.iv, ciphertext: encrypted.ciphertext }
+        : { data }) // fallback: send plaintext if crypto fails
     };
-    
-    // Send message unencrypted for now (testing)
-    let messageToSend = { ...message };
-    
-    // DEBUG: Log to console (hidden from user)
-    if (typeof window !== 'undefined' && window.__DEBUG_PUBSUB) {
-      console.log('[DEBUG] Publishing:', messageToSend);
-    }
-    
-    // Publish via Nostr (all relays)
+
+    // Publish via Nostr
     this.nostrClients.forEach(client => {
       try {
         if (client && typeof client.publish === 'function') {
-          client.publish(messageToSend).catch(() => {
-            // Silently ignore relay publish errors
-          });
+          client.publish(message).catch(() => { });
           this.stats.transport1.published++;
         }
-      } catch (err) {
-        // Silently ignore all errors
-      }
+      } catch (err) { }
     });
-    
-    // Immediately deliver message to local subscribers (loopback - unencrypted for testing)
-    // Use a small timeout to ensure subscription callbacks are registered
+
+    // Loopback to local subscribers (decrypt path, consistent with remote)
     setTimeout(() => {
       this.handleMessage('local', this.peerId, message);
     }, 10);
-    
+
     // Publish via Gun
     if (this.gun) {
       try {
-        // Must match the read path in initGun()
         const room = this.gun.get(`pubsub-${this.channel}`);
-        const messageId = `${this.peerId}-${topic}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        
-        room.get('messages').get(messageId).put({
-          data: JSON.stringify(messageToSend),
+        const gunMsgId = `${this.peerId}-${topic}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        room.get('messages').get(gunMsgId).put({
+          data: JSON.stringify(message),
           timestamp: Date.now()
         });
-        
         this.stats.transport2.published++;
-      } catch (err) {
-        // Silently handle secondary relay publish errors
-      }
+      } catch (err) { }
     }
   }
-  
+
   /**
    * Get peer ID
    */
   getPeerId() {
     return this.peerId;
   }
-  
+
   /**
    * Get stats
    */
@@ -385,12 +403,12 @@ export class PubSubTransport {
       seenMessages: this.seenMessages.size
     };
   }
-  
+
   /**
    * Cleanup
    */
   async destroy() {
-    
+
     // Disconnect Nostr clients
     this.nostrClients.forEach(client => {
       try {
@@ -399,7 +417,7 @@ export class PubSubTransport {
         // Silently handle disconnect errors
       }
     });
-    
+
     this.nostrClients = [];
     this.subscriptions.clear();
     this.seenMessages.clear();
