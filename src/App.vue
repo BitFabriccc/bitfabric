@@ -68,7 +68,7 @@
           <h3>Publish</h3>
           <div class="field">
             <label for="topic">Topic</label>
-            <input id="topic" v-model="publishTopic" placeholder="e.g., events, data, notifications" autocomplete="off" />
+            <input id="topic" v-model="publishTopic" placeholder="e.g., events, data, notifications" autocomplete="off" :disabled="isFreeTier" :style="isFreeTier ? { opacity: 0.6, cursor: 'not-allowed' } : {}" />
           </div>
           <div class="field">
             <label for="message">Message Data (JSON)</label>
@@ -122,7 +122,7 @@
           <h3>Subscribe</h3>
           <div class="field">
             <label for="subtopic">Topic</label>
-            <input id="subtopic" v-model="subscribeTopic" placeholder="e.g., events, data" autocomplete="off" />
+            <input id="subtopic" v-model="subscribeTopic" placeholder="e.g., events, data" autocomplete="off" :disabled="isFreeTier" :style="isFreeTier ? { opacity: 0.6, cursor: 'not-allowed' } : {}" />
           </div>
           <div class="hero-actions">
             <button class="btn-primary" :disabled="!isReady || !subscribeTopic.trim()" @click="addSubscription">
@@ -383,7 +383,13 @@ if (window.location.search.includes('apikey') || window.location.search.includes
 // Handle free plan parameter
 const planParam = new URLSearchParams(window.location.search).get('plan');
 if (planParam === 'free') {
-  startFreeSession();
+  isFreeTier.value = true;
+  userPlan.value = 'free';
+  roomId.value = 'bitfabric-free-tier';
+  publishTopic.value = freeTopic;
+  subscribeTopic.value = freeTopic;
+  sessionStorage.setItem('bitfabric-free-tier', 'true');
+  sessionStorage.setItem('bitfabric-api-key', 'bitfabric-free-tier');
   window.history.replaceState({}, '', window.location.pathname);
 }
 
