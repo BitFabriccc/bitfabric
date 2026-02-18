@@ -341,11 +341,7 @@ async function createKeyInDB(keyName, keyDescription) {
   }
 }
 
-// Initialize on load
-initializeFromStorage();
-if (isFreeTier.value && !userEmail.value) {
-  connect();
-}
+
 
 const nostrRelays = [
   'wss://relay.primal.net',
@@ -794,6 +790,12 @@ function logout() {
 onBeforeUnmount(() => {
   disconnect();
 });
+
+// Initialize on load (after all functions are defined)
+initializeFromStorage();
+if (isFreeTier.value && !userEmail.value) {
+  connect();
+}
 </script>
 
 <style scoped>
