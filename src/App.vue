@@ -10,52 +10,15 @@
           Real-time data distribution at global scale.
         </p>
         
-        <!-- Not signed in -->
-        <div v-if="!isEmailAuthed" class="signin-banner">
-          <div class="signin-content">
-            <h2>🚀 Sign In to BitFabric</h2>
-            <p>Enter your email and password to access your account</p>
-            
-            <div class="signin-form">
-              <input 
-                v-model="signInEmail" 
-                type="email" 
-                class="signin-input" 
-                placeholder="your@email.com"
-                @keyup.enter="$refs.passwordInput.focus()"
-              />
-              <input 
-                v-model="signInPassword" 
-                type="password" 
-                class="signin-input" 
-                placeholder="Password"
-                ref="passwordInput"
-                @keyup.enter="signInWithEmail"
-              />
-              <button class="btn-cta" @click="signInWithEmail" :disabled="!signInEmail.trim() || !signInPassword.trim()">
-                Sign In
-              </button>
-            </div>
-            
-            <div class="signin-links">
-              <span>Don't have an account?</span>
-              <a href="/signup.html" class="btn-link-bold">Create Free Account</a>
-              <span>•</span>
-              <a href="/pricing.html" class="btn-link">View Pricing</a>
-              <span>•</span>
-              <a href="/quickstart.html" class="btn-link">📚 Docs</a>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Signed in -->
-        <div v-else>
-          <div class="meta">
+        <!-- Connection Controls (Universal) -->
+        <div>
+          <div class="meta" v-if="isSessionActive">
             <span v-if="userEmail" class="tag">{{ userEmail }}</span>
-            <span class="tag">API Key: {{ roomId }}</span>
+            <span v-else-if="isFreeTier" class="tag">Free Session</span>
+            <span class="tag">API Key: {{ roomId || 'Free Tier' }}</span>
           </div>
 
-          <div class="field" style="max-width: 520px; margin-top: 10px;">
+          <div class="field" v-if="isSessionActive" style="max-width: 520px; margin-top: 10px;">
             <label for="roomSignedIn">API Key (paste to test)</label>
             <input id="roomSignedIn" v-model="roomId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
           </div>
@@ -65,16 +28,41 @@
               {{ isConnecting ? 'Connecting…' : isReady ? 'Connected' : 'Connect' }}
             </button>
             <button class="btn-ghost" :disabled="!isReady && !fabric" @click="disconnect">Disconnect</button>
-            <button class="btn-ghost" @click="logout" style="background: #ff6b6b; color: white;">Logout</button>
+            <button v-if="isSessionActive" class="btn-ghost" @click="logout" style="background: #ff6b6b; color: white;">Logout</button>
           </div>
         </div>
       </section>
 
       <div class="card-grid">
-        <!-- No key-only sessions: email required for all -->
-        <div class="card" v-if="!isEmailAuthed">
-          <h3>Session</h3>
-          <p class="muted">Email is required to use BitFabric. Please sign in above or <a href="/signup.html" style="color: #667eea; font-weight: 600;">create a free account</a>.</p>
+        <!-- Account / Session Card -->
+        <div class="card">
+          <h3>{{ isEmailAuthed ? 'Managed Account' : isFreeTier ? 'Free Session' : 'Account' }}</h3>
+          
+          <div v-if="!isEmailAuthed" class="signin-form-compact">
+            <p v-if="!isFreeTier" class="muted" style="margin-bottom: 12px;">
+              Ready to scale? Sign in for Managed features.
+            </p>
+            <div class="field-compact">
+              <input v-model="signInEmail" type="email" placeholder="Email" @keyup.enter="$refs.passCard.focus()" />
+            </div>
+            <div class="field-compact">
+              <input v-model="signInPassword" type="password" placeholder="Password" ref="passCard" @keyup.enter="signInWithEmail" />
+            </div>
+            <button class="btn-primary" @click="signInWithEmail" :disabled="!signInEmail.trim() || !signInPassword.trim()">
+              Sign In
+            </button>
+            <div style="margin-top: 12px; font-size: 13px;">
+              <a href="/signup" class="btn-link">Create Account</a> · <a href="/pricing" class="btn-link">View Pricing</a>
+            </div>
+          </div>
+          
+          <div v-else class="account-info">
+            <p><strong>Plan:</strong> {{ userPlan.toUpperCase() }}</p>
+            <p v-if="userEmail"><strong>Email:</strong> {{ userEmail }}</p>
+            <button class="btn-ghost" @click="logout" style="margin-top: 12px; width: 100%; border: 1px solid #ff6b6b; color: #ff6b6b;">
+              Switch Session / Logout
+            </button>
+          </div>
         </div>
 
         <div class="card">
@@ -124,7 +112,9 @@
             </div>
           </div>
           <div class="tag-row" style="margin-top: 10px;">
-            <span class="tag">Network: Active</span>
+            <span class="tag" :style="{ background: isReady ? '#48bb78' : '#718096' }">
+              Network: {{ isReady ? 'Active' : isConnecting ? 'Connecting...' : 'Offline' }}
+            </span>
             <span class="tag">Protocol: P2P</span>
           </div>
         </div>
@@ -223,7 +213,7 @@
       </div>
 
       <div class="footer">
-        BitFabric PubSub © 2026 · <a href="/quickstart.html" style="color: #667eea; text-decoration: none;">📚 Docs</a> · <a href="/pricing.html" style="color: #667eea; text-decoration: none;">Pricing</a> · <a href="/signup.html" style="color: #667eea; text-decoration: none;">Get Started</a> · Enterprise solutions available
+        BitFabric PubSub © 2026 · <a href="/quickstart" style="color: #667eea; text-decoration: none;">📚 Docs</a> · <a href="/pricing" style="color: #667eea; text-decoration: none;">Pricing</a> · <a href="/signup" style="color: #667eea; text-decoration: none;">Get Started</a> · Enterprise solutions available
       </div>
     </div>
   </div>
@@ -248,12 +238,14 @@ const logs = ref([]);
 const subscribedTopics = ref([]);
 const unsubscribeFunctions = new Map();
 const userEmail = ref('');
-const userPlan = ref('starter');
+const userPlan = ref('free');
 const newKeyName = ref('');
 const newKeyDescription = ref('');
 const apiKeys = ref([]);
+const isFreeTier = ref(sessionStorage.getItem('bitfabric-free-tier') === 'true');
 
 const isEmailAuthed = computed(() => !!userEmail.value.trim());
+const isSessionActive = computed(() => isEmailAuthed.value || isFreeTier.value);
 
 const stats = ref({
   messagesPublished: 0,
@@ -314,6 +306,16 @@ async function initializeFromStorage() {
   }
 }
 
+function startFreeSession() {
+  isFreeTier.value = true;
+  userPlan.value = 'free';
+  roomId.value = 'bitfabric-free-tier';
+  sessionStorage.setItem('bitfabric-free-tier', 'true');
+  sessionStorage.setItem('bitfabric-api-key', 'bitfabric-free-tier');
+  pushLog('Started Free session (no API key required)');
+  connect();
+}
+
 // Helper: create key in database (using immutable account ID)
 async function createKeyInDB(keyName, keyDescription) {
   try {
@@ -339,6 +341,9 @@ async function createKeyInDB(keyName, keyDescription) {
 
 // Initialize on load
 initializeFromStorage();
+if (isFreeTier.value && !userEmail.value) {
+  connect();
+}
 
 const nostrRelays = [
   'wss://relay.primal.net',
@@ -370,6 +375,13 @@ const isReady = computed(() => status.value === 'ready');
 
 // Clear any API key from URL for security
 if (window.location.search.includes('apikey') || window.location.search.includes('room')) {
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+// Handle free plan parameter
+const planParam = new URLSearchParams(window.location.search).get('plan');
+if (planParam === 'free') {
+  startFreeSession();
   window.history.replaceState({}, '', window.location.pathname);
 }
 
@@ -445,7 +457,7 @@ async function signInWithEmail() {
     passwordHash = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
   } catch {
     // If hashing fails, treat as sign-in failure
-    window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+    window.location.href = `/signup?email=${encodeURIComponent(email)}`;
     return;
   }
 
@@ -458,13 +470,13 @@ async function signInWithEmail() {
     });
 
     if (!authResponse.ok) {
-      window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+      window.location.href = `/signup?email=${encodeURIComponent(email)}`;
       return;
     }
 
     const authData = await authResponse.json();
     if (!authData?.authenticated) {
-      window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+      window.location.href = `/signup?email=${encodeURIComponent(email)}`;
       return;
     }
 
@@ -496,7 +508,7 @@ async function signInWithEmail() {
 
     connect();
   } catch {
-    window.location.href = `/signup.html?email=${encodeURIComponent(email)}`;
+    window.location.href = `/signup?email=${encodeURIComponent(email)}`;
   }
 }
 
@@ -509,35 +521,37 @@ function generateUUID() {
 
 async function connect() {
   if (isConnecting.value) return;
-  if (!isEmailAuthed.value) {
-    pushLog('Email sign-in required.');
-    status.value = 'error';
-    return;
+  
+  // Auto-start free session if no other session is active
+  if (!isSessionActive.value) {
+    startFreeSession();
   }
 
-  // Server-side validation: reject any key not present in D1 for this email
-  try {
-    const validateResp = await fetch('/api/validate-key', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: userEmail.value, apiKey: roomId.value })
-    });
-    if (!validateResp.ok) {
-      const data = await validateResp.json().catch(() => ({}));
-      pushLog(data?.error || 'Invalid API key');
+  // Server-side validation: skip for free tier
+  if (!isFreeTier.value) {
+    try {
+      const validateResp = await fetch('/api/validate-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail.value, apiKey: roomId.value })
+      });
+      if (!validateResp.ok) {
+        const data = await validateResp.json().catch(() => ({}));
+        pushLog(data?.error || 'Invalid API key');
+        status.value = 'error';
+        return;
+      }
+      const validateData = await validateResp.json().catch(() => ({}));
+      if (!validateData?.valid) {
+        pushLog(validateData?.error || 'Invalid API key');
+        status.value = 'error';
+        return;
+      }
+    } catch (e) {
+      pushLog('Unable to validate API key');
       status.value = 'error';
       return;
     }
-    const validateData = await validateResp.json().catch(() => ({}));
-    if (!validateData?.valid) {
-      pushLog(validateData?.error || 'Invalid API key');
-      status.value = 'error';
-      return;
-    }
-  } catch (e) {
-    pushLog('Unable to validate API key');
-    status.value = 'error';
-    return;
   }
 
   await disconnect();
@@ -749,12 +763,14 @@ function logout() {
   sessionStorage.removeItem('bitfabric-auth-api-key');
   sessionStorage.removeItem('bitfabric-email');
   sessionStorage.removeItem('bitfabric-password-hash');
+  sessionStorage.removeItem('bitfabric-free-tier');
   
   // Clear UI
   roomId.value = '';
   authApiKey.value = '';
   userEmail.value = '';
-  userPlan.value = 'starter';
+  userPlan.value = 'free';
+  isFreeTier.value = false;
   apiKeys.value = [];
   signInEmail.value = '';
   signInPassword.value = '';
@@ -777,5 +793,32 @@ onBeforeUnmount(() => {
 
 .muted {
   color: var(--muted);
+}
+
+.signin-form-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field-compact input {
+  width: 100%;
+  padding: 10px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+}
+
+.account-info p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.signin-links-compact {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
 }
 </style>

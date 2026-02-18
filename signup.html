@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +15,12 @@
     });
   </script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -24,6 +30,7 @@
       justify-content: center;
       padding: 20px;
     }
+
     .container {
       background: white;
       border-radius: 16px;
@@ -32,19 +39,23 @@
       max-width: 500px;
       width: 100%;
     }
+
     h1 {
       color: #1a202c;
       margin-bottom: 8px;
       font-size: 32px;
     }
+
     .subtitle {
       color: #718096;
       margin-bottom: 32px;
       font-size: 16px;
     }
+
     .field {
       margin-bottom: 24px;
     }
+
     label {
       display: block;
       color: #4a5568;
@@ -52,6 +63,7 @@
       margin-bottom: 8px;
       font-size: 14px;
     }
+
     input {
       width: 100%;
       padding: 12px 16px;
@@ -60,10 +72,12 @@
       font-size: 16px;
       transition: border-color 0.2s;
     }
+
     input:focus {
       outline: none;
       border-color: #667eea;
     }
+
     button {
       width: 100%;
       padding: 14px;
@@ -76,15 +90,18 @@
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
     }
+
     button:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
     }
+
     button:disabled {
       opacity: 0.6;
       cursor: not-allowed;
       transform: none;
     }
+
     .result {
       margin-top: 24px;
       padding: 20px;
@@ -92,9 +109,11 @@
       border-radius: 8px;
       display: none;
     }
+
     .result.show {
       display: block;
     }
+
     .api-key {
       background: #1a202c;
       color: #48bb78;
@@ -105,22 +124,26 @@
       margin: 12px 0;
       word-break: break-all;
     }
+
     .copy-btn {
       width: auto;
       padding: 8px 16px;
       margin-top: 12px;
       font-size: 14px;
     }
+
     .success {
       color: #48bb78;
       font-weight: 600;
       margin-bottom: 8px;
     }
+
     .info {
       color: #718096;
       font-size: 14px;
       margin-top: 12px;
     }
+
     .error {
       color: #f56565;
       padding: 12px;
@@ -129,37 +152,39 @@
       margin-top: 16px;
       display: none;
     }
+
     .error.show {
       display: block;
     }
   </style>
 </head>
+
 <body>
   <div class="container">
-    <h1>🚀 Start Building Today</h1>
-    <p class="subtitle">Get your free API key and start using BitFabric PubSub</p>
-    
+    <h1>🚀 Managed BitFabric</h1>
+    <p class="subtitle">Get your Managed API credentials and unlock production scale PubSub</p>
+
     <div class="features" style="margin-bottom: 32px;">
       <div class="feature">✓ Unlimited topics</div>
       <div class="feature">✓ Real-time messaging</div>
       <div class="feature">✓ Global distribution</div>
       <div class="feature">✓ No credit card required</div>
     </div>
-    
+
     <div class="field">
       <label for="email">Email Address</label>
       <input type="email" id="email" placeholder="your@email.com" required>
     </div>
-    
+
     <div class="field">
       <label for="password">Password</label>
       <input type="password" id="password" placeholder="Create a password" required minlength="6">
     </div>
-    
-    <button onclick="generateKey()" id="generateBtn">Get Free API Key</button>
-    
+
+    <button onclick="generateKey()" id="generateBtn">Create Managed Account</button>
+
     <div class="error" id="error"></div>
-    
+
     <div class="result" id="result">
       <div class="success">✓ Welcome to BitFabric!</div>
       <div class="api-key" id="apiKey"></div>
@@ -168,25 +193,26 @@
         Ready to go! Use this key at <a href="/" target="_blank" style="color: #667eea;">bitfabric.cc</a>
       </div>
     </div>
-    
+
     <div style="text-align: center; margin-top: 24px; color: #718096; font-size: 14px;">
       Already have an account? <a href="/" style="color: #667eea; text-decoration: none;">Sign in</a>
     </div>
   </div>
-  
+
   <style>
     .features {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
+
     .feature {
       color: #48bb78;
       font-size: 14px;
       font-weight: 500;
     }
   </style>
-  
+
   <script>
     async function hashPassword(password) {
       const encoder = new TextEncoder();
@@ -195,31 +221,31 @@
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
-    
+
     // Keys are issued by the server. (Email is required for all keys.)
-    
+
     async function generateKey() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       const btn = document.getElementById('generateBtn');
       const resultDiv = document.getElementById('result');
       const errorDiv = document.getElementById('error');
-      
+
       if (!email) {
         showError('Please enter your email address');
         return;
       }
-      
+
       if (!password || password.length < 6) {
         showError('Password must be at least 6 characters');
         return;
       }
-      
+
       btn.disabled = true;
       btn.textContent = 'Generating...';
       errorDiv.classList.remove('show');
       resultDiv.classList.remove('show');
-      
+
       try {
         // Hash password for local storage consistency (server-issued key does not depend on it)
         const hashedPassword = await hashPassword(password);
@@ -258,22 +284,22 @@
           premiumNotice.textContent = '⭐ Premium Account: Unlimited everything, forever!';
           resultDiv.insertBefore(premiumNotice, resultDiv.querySelector('.info'));
         }
-        
+
       } catch (error) {
         showError('Failed to generate API key. Please try again.');
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Get Free API Key';
+        btn.textContent = 'Create Managed Account';
       }
     }
-    
+
     function generateUUID() {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
       });
     }
-    
+
     function copyKey() {
       const apiKey = document.getElementById('apiKey').textContent;
       navigator.clipboard.writeText(apiKey).then(() => {
@@ -285,19 +311,20 @@
         }, 2000);
       });
     }
-    
+
     function showError(message) {
       const errorDiv = document.getElementById('error');
       errorDiv.textContent = message;
       errorDiv.classList.add('show');
     }
-    
+
     // Allow Enter key to submit
-    document.getElementById('email').addEventListener('keypress', function(e) {
+    document.getElementById('email').addEventListener('keypress', function (e) {
       if (e.key === 'Enter') {
         generateKey();
       }
     });
   </script>
 </body>
+
 </html>

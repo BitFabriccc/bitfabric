@@ -1,39 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pricing - BitFabric</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       padding: 60px 20px;
     }
+
     .container {
       max-width: 1200px;
       margin: 0 auto;
     }
+
     h1 {
       color: white;
       text-align: center;
       font-size: 40px;
       margin-bottom: 16px;
     }
+
     .subtitle {
       color: rgba(255, 255, 255, 0.9);
       text-align: center;
       margin-bottom: 60px;
       font-size: 18px;
     }
+
     .pricing-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 32px;
       margin-bottom: 60px;
     }
+
     .plan {
       background: white;
       border-radius: 16px;
@@ -41,18 +52,22 @@
       position: relative;
       transition: transform 0.3s, box-shadow 0.3s;
     }
+
     .plan:hover {
       transform: translateY(-8px);
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
+
     .plan.featured {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       transform: scale(1.05);
     }
+
     .plan.featured:hover {
       transform: scale(1.05) translateY(-8px);
     }
+
     .badge {
       position: absolute;
       top: -12px;
@@ -64,54 +79,66 @@
       font-size: 12px;
       font-weight: 600;
     }
+
     .plan-name {
       font-size: 24px;
       font-weight: 700;
       margin-bottom: 8px;
     }
+
     .plan-desc {
       font-size: 14px;
       opacity: 0.8;
       margin-bottom: 24px;
     }
+
     .plan.featured .plan-desc {
       color: rgba(255, 255, 255, 0.9);
     }
+
     .price {
       font-size: 48px;
       font-weight: 700;
       margin-bottom: 4px;
     }
+
     .billing {
       font-size: 14px;
       opacity: 0.7;
       margin-bottom: 32px;
     }
+
     .plan.featured .billing {
       color: rgba(255, 255, 255, 0.8);
     }
+
     .features {
       list-style: none;
       margin-bottom: 32px;
     }
+
     .features li {
       padding: 12px 0;
       border-bottom: 1px solid rgba(0, 0, 0, 0.1);
       font-size: 14px;
     }
+
     .plan.featured .features li {
       border-bottom-color: rgba(255, 255, 255, 0.2);
       color: white;
     }
+
     .features li:before {
       content: "✓ ";
       color: #48bb78;
       font-weight: 600;
       margin-right: 8px;
     }
+
     .plan.featured .features li:before {
       color: #90ee90;
     }
+
     button {
       width: 100%;
       padding: 14px;
@@ -124,36 +151,44 @@
       cursor: pointer;
       transition: background 0.2s;
     }
+
     button:hover {
       background: #5568d3;
     }
+
     .plan.featured button {
       background: white;
       color: #667eea;
     }
+
     .plan.featured button:hover {
       background: #f0f0f0;
     }
+
     .faq {
       background: white;
       border-radius: 16px;
       padding: 40px;
       margin-top: 60px;
     }
+
     .faq h2 {
       font-size: 28px;
       margin-bottom: 32px;
       color: #1a202c;
     }
+
     .faq-item {
       margin-bottom: 24px;
     }
+
     .faq-q {
       font-weight: 600;
       color: #667eea;
       margin-bottom: 8px;
       cursor: pointer;
     }
+
     .faq-a {
       color: #718096;
       font-size: 14px;
@@ -161,45 +196,63 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>Simple, Transparent Pricing</h1>
     <p class="subtitle">Choose the plan that fits your needs</p>
-    
+
     <div class="pricing-grid">
       <!-- Free Plan -->
       <div class="plan">
-        <div class="plan-name">Starter</div>
-        <p class="plan-desc">Perfect for getting started</p>
+        <div class="plan-name">Free</div>
+        <p class="plan-desc">No signup, just start building</p>
         <div class="price">$0</div>
         <p class="billing">Forever free</p>
         <ul class="features">
           <li>10k messages/month</li>
-          <li>1 API key</li>
-          <li>Public topics only</li>
+          <li>No email required</li>
+          <li>No API key required</li>
           <li>Community support</li>
         </ul>
-        <button onclick="selectPlan('starter', 0)">Get Started</button>
+        <button onclick="selectPlan('free', 0)">Try Free Now</button>
       </div>
-      
-      <!-- Professional Plan -->
+
+      <!-- Managed Plan -->
       <div class="plan featured">
         <div class="badge">POPULAR</div>
-        <div class="plan-name">Professional</div>
-        <p class="plan-desc">For serious projects</p>
-        <div class="price">$9</div>
+        <div class="plan-name">Managed</div>
+        <p class="plan-desc">For production apps</p>
+        <div class="price">$19</div>
         <p class="billing">per month</p>
         <ul class="features">
           <li>1M messages/month</li>
           <li>5 API keys</li>
-          <li>Private + public topics</li>
+          <li>Requires email + API key</li>
           <li>Email support</li>
           <li>Advanced encryption</li>
           <li>Usage analytics</li>
         </ul>
-        <button onclick="selectPlan('professional', 900)">Subscribe Now</button>
+        <button onclick="selectPlan('managed', 1900)">Subscribe Now</button>
       </div>
-      
+
+      <!-- Managed+ Plan -->
+      <div class="plan">
+        <div class="plan-name">Managed+</div>
+        <p class="plan-desc">For high-traffic projects</p>
+        <div class="price">$49</div>
+        <p class="billing">per month</p>
+        <ul class="features">
+          <li>10M messages/month</li>
+          <li>Unlimited API keys</li>
+          <li>Requires email + API key</li>
+          <li>Priority email support</li>
+          <li>Dedicated relays</li>
+          <li>Advanced analytics</li>
+        </ul>
+        <button onclick="selectPlan('managed_plus', 4900)">Subscribe Now</button>
+      </div>
+
       <!-- Enterprise Plan -->
       <div class="plan">
         <div class="plan-name">Enterprise</div>
@@ -209,7 +262,7 @@
         <ul class="features">
           <li>Unlimited messages</li>
           <li>Unlimited API keys</li>
-          <li>Private topics</li>
+          <li>Requires email + API key</li>
           <li>Priority support</li>
           <li>Custom encryption</li>
           <li>SLA guarantee</li>
@@ -218,42 +271,46 @@
         <button onclick="window.location.href='mailto:sales@bitfabric.cc'">Contact Sales</button>
       </div>
     </div>
-    
+
     <div class="faq">
       <h2>Frequently Asked Questions</h2>
-      
+
       <div class="faq-item">
         <div class="faq-q">Can I change plans anytime?</div>
-        <div class="faq-a">Yes! You can upgrade or downgrade your plan at any time. Changes take effect on your next billing cycle.</div>
+        <div class="faq-a">Yes! You can upgrade or downgrade your plan at any time. Changes take effect on your next
+          billing cycle.</div>
       </div>
-      
+
       <div class="faq-item">
         <div class="faq-q">What happens if I exceed my message limit?</div>
-        <div class="faq-a">We'll notify you when you're approaching your limit. Your plan won't be automatically downgraded - we'll give you options to upgrade.</div>
+        <div class="faq-a">We'll notify you when you're approaching your limit. Your plan won't be automatically
+          downgraded - we'll give you options to upgrade.</div>
       </div>
-      
+
       <div class="faq-item">
         <div class="faq-q">Do you offer discounts for annual billing?</div>
         <div class="faq-a">Yes! Annual plans receive 20% discount. Contact our sales team for details.</div>
       </div>
-      
+
       <div class="faq-item">
         <div class="faq-q">Is there encryption included?</div>
-        <div class="faq-a">All plans include end-to-end encryption. Professional and Enterprise plans include advanced encryption options and key management.</div>
+        <div class="faq-a">All plans include end-to-end encryption. Professional and Enterprise plans include advanced
+          encryption options and key management.</div>
       </div>
     </div>
   </div>
-  
+
   <script>
     function selectPlan(plan, price) {
-      if (plan === 'starter') {
-        // Free plan - just get API key
-        window.location.href = '/signup.html?plan=starter';
+      if (plan === 'free') {
+        // Free plan - no signup required, redirect to app with free plan parameter
+        window.location.href = '/?plan=free';
       } else {
-        // Paid plan - redirect to checkout
-        window.location.href = `/checkout.html?plan=${plan}&price=${price}`;
+        // Paid plan - redirect to checkout/signup (both require email)
+        window.location.href = `/checkout?plan=${plan}&price=${price}`;
       }
     }
   </script>
 </body>
+
 </html>
