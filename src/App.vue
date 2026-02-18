@@ -229,6 +229,7 @@ const authApiKey = ref(sessionStorage.getItem('bitfabric-auth-api-key') || '');
 const accountId = ref('');
 const signInEmail = ref('');
 const signInPassword = ref('');
+const isFreeTier = ref(sessionStorage.getItem('bitfabric-free-tier') === 'true');
 const freeTopic = 'bitfabric-free-tier';
 const publishTopic = ref(isFreeTier.value ? freeTopic : 'events');
 const subscribeTopic = ref(isFreeTier.value ? freeTopic : 'events');
@@ -242,7 +243,6 @@ const userPlan = ref('free');
 const newKeyName = ref('');
 const newKeyDescription = ref('');
 const apiKeys = ref([]);
-const isFreeTier = ref(sessionStorage.getItem('bitfabric-free-tier') === 'true');
 
 const isEmailAuthed = computed(() => !!userEmail.value.trim());
 const isSessionActive = computed(() => isEmailAuthed.value || isFreeTier.value);
