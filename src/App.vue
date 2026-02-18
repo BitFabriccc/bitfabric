@@ -33,13 +33,13 @@
       </section>
 
       <div class="card-grid">
-        <!-- Account / Session Card -->
-        <div class="card">
-          <h3>{{ isEmailAuthed ? 'Managed Account' : isFreeTier ? 'Free Session' : 'Account' }}</h3>
+        <!-- Account Card: only show for non-free users -->
+        <div class="card" v-if="!isFreeTier">
+          <h3>{{ isEmailAuthed ? 'Managed Account' : 'Account' }}</h3>
           
           <div v-if="!isEmailAuthed" class="signin-form-compact">
-            <p v-if="!isFreeTier" class="muted" style="margin-bottom: 12px;">
-              Ready to scale? Sign in for Managed features.
+            <p class="muted" style="margin-bottom: 12px;">
+              Sign in for Managed features &amp; API keys.
             </p>
             <div class="field-compact">
               <input v-model="signInEmail" type="email" placeholder="Email" @keyup.enter="$refs.passCard.focus()" />
