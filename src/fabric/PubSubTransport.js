@@ -227,9 +227,10 @@ export class PubSubTransport {
       }
     }
     
-    // Create message ID for deduplication based on content, not timestamp
-    const dataStr = JSON.stringify(decryptedPayload.data);
-    const msgId = `${from}-${decryptedPayload.topic}-${dataStr}`;
+    // Create message ID for deduplication — use messageId if present, else content hash
+    const msgId = payload.messageId
+      ? payload.messageId
+      : `${from}-${decryptedPayload.topic}-${JSON.stringify(decryptedPayload.data)}-${decryptedPayload.timestamp || ''}`;
     
     if (this.seenMessages.has(msgId)) {
       // Duplicate message skipped (deduplication)
@@ -311,7 +312,9 @@ export class PubSubTransport {
    * Publish a message to a topic (encrypted with UnSEA)
    */
   async publish(topic, data) {
+    const messageId = `${this.peerId}-${topic}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const message = {
+      messageId,
       from: this.peerId,
       topic,
       data,

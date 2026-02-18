@@ -190,10 +190,11 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
     });
 
     // Subscribe to this room (topic-tag filtered)
+    const since = Math.floor(Date.now() / 1000) - 300; // last 5 minutes
     const filter = {
       kinds: [1],
       '#t': [state.room],
-      // Fetch recent messages - app routes by topic
+      since,
       limit: 50,
     };
 
