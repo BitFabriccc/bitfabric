@@ -12,13 +12,12 @@
         
         <!-- Connection Controls (Universal) -->
         <div>
-          <div class="meta" v-if="isSessionActive">
-            <span v-if="userEmail" class="tag">{{ userEmail }}</span>
-            <span v-else-if="isFreeTier" class="tag">Free Session</span>
-            <span class="tag">API Key: {{ roomId || 'Free Tier' }}</span>
+          <div class="meta" v-if="isEmailAuthed">
+            <span class="tag">{{ userEmail }}</span>
+            <span class="tag">API Key: {{ roomId }}</span>
           </div>
 
-          <div class="field" v-if="isSessionActive" style="max-width: 520px; margin-top: 10px;">
+          <div class="field" v-if="isEmailAuthed" style="max-width: 520px; margin-top: 10px;">
             <label for="roomSignedIn">API Key (paste to test)</label>
             <input id="roomSignedIn" v-model="roomId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
           </div>
@@ -28,7 +27,7 @@
               {{ isConnecting ? 'Connecting…' : isReady ? 'Connected' : 'Connect' }}
             </button>
             <button class="btn-ghost" :disabled="!isReady && !fabric" @click="disconnect">Disconnect</button>
-            <button v-if="isSessionActive" class="btn-ghost" @click="logout" style="background: #ff6b6b; color: white;">Logout</button>
+            <button v-if="isEmailAuthed" class="btn-ghost" @click="logout" style="background: #ff6b6b; color: white;">Logout</button>
           </div>
         </div>
       </section>
