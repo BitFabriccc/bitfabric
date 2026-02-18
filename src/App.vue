@@ -68,7 +68,8 @@
           <h3>Publish</h3>
           <div class="field">
             <label for="topic">Topic</label>
-            <input id="topic" v-model="publishTopic" placeholder="e.g., events, data, notifications" autocomplete="off" :disabled="isFreeTier" :style="isFreeTier ? { opacity: 0.6, cursor: 'not-allowed' } : {}" />
+            <div v-if="isFreeTier" class="locked-topic">{{ freeTopic }} <span class="lock-badge">🔒 Free Tier</span></div>
+            <input v-else id="topic" v-model="publishTopic" placeholder="e.g., events, data, notifications" autocomplete="off" />
           </div>
           <div class="field">
             <label for="message">Message Data (JSON)</label>
@@ -122,7 +123,8 @@
           <h3>Subscribe</h3>
           <div class="field">
             <label for="subtopic">Topic</label>
-            <input id="subtopic" v-model="subscribeTopic" placeholder="e.g., events, data" autocomplete="off" :disabled="isFreeTier" :style="isFreeTier ? { opacity: 0.6, cursor: 'not-allowed' } : {}" />
+            <div v-if="isFreeTier" class="locked-topic">{{ freeTopic }} <span class="lock-badge">🔒 Free Tier</span></div>
+            <input v-else id="subtopic" v-model="subscribeTopic" placeholder="e.g., events, data" autocomplete="off" />
           </div>
           <div class="hero-actions">
             <button class="btn-primary" :disabled="!isReady || !subscribeTopic.trim()" @click="addSubscription">
@@ -229,7 +231,11 @@ const authApiKey = ref(sessionStorage.getItem('bitfabric-auth-api-key') || '');
 const accountId = ref('');
 const signInEmail = ref('');
 const signInPassword = ref('');
-const isFreeTier = ref(sessionStorage.getItem('bitfabric-free-tier') === 'true');
+// New visitors with no session are always free tier by default
+const isFreeTier = ref(
+  sessionStorage.getItem('bitfabric-free-tier') === 'true' ||
+  !sessionStorage.getItem('bitfabric-email')
+);
 const freeTopic = 'bitfabric-free-tier';
 const publishTopic = ref(isFreeTier.value ? freeTopic : 'events');
 const subscribeTopic = ref(isFreeTier.value ? freeTopic : 'events');
@@ -830,5 +836,27 @@ if (isFreeTier.value && !userEmail.value) {
   display: flex;
   gap: 8px;
   font-size: 12px;
+}
+.locked-topic {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 14px;
+  color: #a0aec0;
+}
+
+.lock-badge {
+  font-family: sans-serif;
+  font-size: 11px;
+  padding: 2px 6px;
+  background: #2d3748;
+  border-radius: 4px;
+  color: #718096;
+  white-space: nowrap;
 }
 </style>
