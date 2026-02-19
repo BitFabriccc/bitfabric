@@ -11,7 +11,7 @@ export class PubSubFabric {
   constructor(config = {}) {
     this.roomId = config.roomId || 'default';
     this.peerId = config.peerId || null;
-    
+
     // Transport layer (Gun + Nostr) - ALL data flows through these
     this.transport = new PubSubTransport({
       roomId: this.roomId,
@@ -23,16 +23,17 @@ export class PubSubFabric {
         'wss://relay.snort.social',
         'wss://nostr.wine',
         'wss://relay.damus.io'
-      ]
+      ],
+      gunPeers: config.gunPeers || undefined
     });
-    
+
     // Local subscriptions: topic -> Set<callback>
     this.subscriptions = new Map();
-    
+
     // Track ready state
     this.ready = false;
     this.readyPromise = null;
-    
+
     // Stats
     this.stats = {
       messagesPublished: 0,
@@ -40,27 +41,27 @@ export class PubSubFabric {
       topics: 0
     };
   }
-  
+
   /**
    * Initialize the fabric
    */
   async init() {
     if (this.readyPromise) return this.readyPromise;
-    
+
     this.readyPromise = (async () => {
-      
+
       // Initialize transport
       await this.transport.init();
       this.peerId = this.transport.getPeerId();
-      
+
       this.ready = true;
-      
+
       return this.peerId;
     })();
-    
+
     return this.readyPromise;
   }
-  
+
   /**
    * Subscribe to a topic
    */
@@ -68,11 +69,11 @@ export class PubSubFabric {
     if (!this.subscriptions.has(topic)) {
       this.subscriptions.set(topic, new Set());
       this.stats.topics = this.subscriptions.size;
-      
+
       // Subscribe at transport level
       this.transport.subscribe(topic, (message) => {
         this.stats.messagesReceived++;
-        
+
         // Call all local subscribers
         const callbacks = this.subscriptions.get(topic);
         if (callbacks) {
@@ -85,20 +86,20 @@ export class PubSubFabric {
         }
       });
     }
-    
+
     this.subscriptions.get(topic).add(callback);
-    
+
     // Return unsubscribe function
     return () => this.unsubscribe(topic, callback);
   }
-  
+
   /**
    * Unsubscribe from a topic
    */
   unsubscribe(topic, callback) {
     if (this.subscriptions.has(topic)) {
       this.subscriptions.get(topic).delete(callback);
-      
+
       if (this.subscriptions.get(topic).size === 0) {
         this.subscriptions.delete(topic);
         this.stats.topics = this.subscriptions.size;
@@ -106,7 +107,7 @@ export class PubSubFabric {
       }
     }
   }
-  
+
   /**
    * Publish a message to a topic
    */
@@ -114,18 +115,18 @@ export class PubSubFabric {
     if (!this.ready) {
       throw new Error('PubSubFabric not ready. Call init() first.');
     }
-    
+
     await this.transport.publish(topic, data);
     this.stats.messagesPublished++;
   }
-  
+
   /**
    * Get peer ID
    */
   getPeerId() {
     return this.peerId;
   }
-  
+
   /**
    * Get fabric stats
    */
@@ -137,12 +138,12 @@ export class PubSubFabric {
       peerId: this.peerId?.substring(0, 8)
     };
   }
-  
+
   /**
    * Cleanup
    */
   async destroy() {
-    
+
     this.subscriptions.clear();
     await this.transport.destroy();
     this.ready = false;

@@ -42,6 +42,8 @@ export class PubSubTransport {
       'wss://relay.damus.io'
     ];
 
+    this.gunPeers = config.gunPeers || ACTIVE_GUN_RELAYS;
+
     // Topic subscriptions: topic -> Set<callback>
     this.subscriptions = new Map();
 
@@ -174,7 +176,7 @@ export class PubSubTransport {
     }
 
     try {
-      this.gun = Gun(ACTIVE_GUN_RELAYS);
+      this.gun = Gun(this.gunPeers);
 
       const room = this.gun.get(`pubsub-${this.channel}`);
 
