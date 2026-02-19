@@ -56,6 +56,9 @@
               {{ isConnecting ? 'Connecting…' : isReady ? 'Connected' : 'Connect' }}
             </button>
             <button class="btn-ghost" :disabled="!isReady && !fabric" @click="disconnect">Disconnect</button>
+            <button class="btn-ghost" @click="joinForum" :style="isForumVisible ? 'border-color:var(--primary-color);color:var(--primary-color);' : ''">
+              {{ isForumVisible ? 'Forum Active' : 'Support Forum' }}
+            </button>
             <button v-if="isEmailAuthed" class="btn-ghost" @click="logout" style="background: #ff6b6b; color: white;">Logout</button>
           </div>
         </div>
@@ -106,17 +109,20 @@
             <div class="field-compact">
               <input v-model="roomId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
             </div>
+            <div style="font-size: 11px; margin-top: 6px;" :style="isValidated ? 'color:var(--primary-color);' : (roomId ? 'color:#ff6b6b;' : 'color:var(--text-muted);')">
+              {{ keySourceHint }}
+            </div>
           </div>
 
           <div v-else class="managed-keys">
             <div class="keys-list" v-if="apiKeys.length > 0" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
-              <div v-for="key in apiKeys" :key="key.id" 
+              <div v-for="key in apiKeys" :key="key.key_id" 
                    class="key-item" 
-                   :class="{ active: roomId === key.key }"
+                   :class="{ active: roomId === key.value }"
                    style="padding:10px;border:1.5px solid var(--border-color);border-radius:12px;cursor:pointer;transition:all 0.2s;"
-                   @click="roomId = key.key">
+                   @click="roomId = key.value">
                 <div style="font-weight:600;font-size:14px;">{{ key.name || 'Default' }}</div>
-                <code style="font-size:12px;color:var(--primary-color);">{{ key.key.slice(0, 12) }}...</code>
+                <code style="font-size:12px;color:var(--primary-color);">{{ (key.value || '').slice(0, 12) }}...</code>
               </div>
             </div>
             <div v-else class="empty-keys">No keys found.</div>
@@ -128,6 +134,36 @@
                <a href="/pricing" target="_blank" style="color:var(--primary-color);">Upgrade for full management</a>
             </div>
           </div>
+        </div>
+
+        <!-- Support Forum Card -->
+        <div class="card" v-if="isForumVisible" style="grid-column: span 1; background: var(--card-bg);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <h3 style="margin:0;">Support Forum</h3>
+              <input v-model="userAlias" placeholder="Username (optional)" style="height:24px; font-size:11px; width:120px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:0 8px;" />
+            </div>
+            <span class="tag" style="background:var(--primary-color);color:white;border:none;">LIVE</span>
+          </div>
+          <div class="forum-chat" style="height: 320px; display: flex; flex-direction: column;">
+            <div class="message-feed" ref="forumFeed" style="flex: 1; overflow-y: auto; padding: 12px; background: rgba(0,0,0,0.1); border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border-color);">
+              <div v-for="msg in forumMessages" :key="msg.messageId" class="chat-msg" style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                  <span style="font-weight: 700; font-size: 13px; color: var(--primary-color);">{{ msg.data?.userAlias || 'Unknown' }}</span>
+                  <span style="font-size: 9px; color: var(--text-muted);">{{ new Date(msg.receivedAt).toLocaleTimeString() }}</span>
+                </div>
+                <div style="font-size: 14px; line-height: 1.4; color: var(--text-muted);">{{ msg.data?.text }}</div>
+              </div>
+              <div v-if="forumMessages.length === 0" class="muted" style="text-align: center; margin-top: 60px; font-size: 13px;">
+                No support messages yet.<br>Ask a question to start the thread.
+              </div>
+            </div>
+            <div class="field-compact" style="display: flex; gap: 8px;">
+              <input v-model="forumInput" placeholder="Ask for support..." @keyup.enter="sendForumMessage" style="flex: 1; height: 38px;" />
+              <button class="btn-primary" @click="sendForumMessage" :disabled="!forumInput.trim()" style="height: 38px; width: auto; padding: 0 16px;">Send</button>
+            </div>
+          </div>
+          <p class="muted" style="font-size: 11px; margin-top: 8px; text-align: center;">Messages are shared in real-time on <code>{{ FORUM_TOPIC }}</code></p>
         </div>
 
         <div class="card">
@@ -281,7 +317,7 @@
       </div>
 
       <div class="footer">
-        BitFabric PubSub © 2026 · <a href="/quickstart" style="color: #667eea; text-decoration: none;">📚 Docs</a> · <a href="/pricing" style="color: #667eea; text-decoration: none;">Pricing</a> · <a href="/signup" style="color: #667eea; text-decoration: none;">Get Started</a> · Enterprise solutions available
+        BitFabric PubSub © 2026 · <a href="/docs.html" @click="navDisconnect($event, '/docs.html')" style="color: #667eea; text-decoration: none;">📚 Docs</a> · <a href="/pricing" @click="navDisconnect($event, '/pricing')" style="color: #667eea; text-decoration: none;">Pricing</a> · <a href="/signup" @click="navDisconnect($event, '/signup')" style="color: #667eea; text-decoration: none;">Get Started</a> · Enterprise solutions available
       </div>
     </div>
   </div>
@@ -314,8 +350,28 @@ const newKeyName = ref('');
 const newKeyDescription = ref('');
 const apiKeys = ref([]);
 
-const isEmailAuthed = computed(() => !!userEmail.value.trim());
-const isSessionActive = computed(() => isEmailAuthed.value || isFreeTier.value);
+// Validation & Forum State
+const isValidated = ref(false);
+const keySourceHint = ref('Free session uses shared global topic.');
+const isForumVisible = ref(false);
+const FORUM_ROOM = 'bitfabric-free-tier';
+const FORUM_TOPIC = 'general-support';
+const forumInput = ref('');
+const forumFeed = ref(null);
+const userAlias = ref(localStorage.getItem('bitfabric-user-alias') || '');
+
+watch(userAlias, (val) => {
+  localStorage.setItem('bitfabric-user-alias', val);
+});
+
+const forumMessages = computed(() => {
+  return messages.value
+    .filter(m => m.topic === FORUM_TOPIC && m.data?.text?.trim())
+    .sort((a, b) => b.receivedAt - a.receivedAt);
+});
+
+const isEmailAuthed = computed(() => !!userEmail.value?.trim());
+const isSessionActive = computed(() => isEmailAuthed.value || isFreeTier.value || isValidated.value);
 
 const stats = ref({
   messagesPublished: 0,
@@ -362,10 +418,10 @@ async function initializeFromStorage() {
     sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
     sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
     sessionStorage.setItem('bitfabric-password-hash', storedPasswordHash);
-    roomId.value = authData.sessionKey;
-    authApiKey.value = authData.sessionKey;
-    accountId.value = authData.accountId;
-    userEmail.value = authData.email;
+    roomId.value = authData.sessionKey || '';
+    authApiKey.value = authData.sessionKey || '';
+    accountId.value = authData.accountId || '';
+    userEmail.value = authData.email || '';
     userPlan.value = authData.plan || 'starter';
 
     // Fetch API keys from D1 database
@@ -389,6 +445,47 @@ async function initializeFromStorage() {
   }
 }
 
+async function validateManualKey(key) {
+  if (!key.trim()) {
+    isValidated.value = false;
+    keySourceHint.value = 'Free session uses shared global topic.';
+    return;
+  }
+  
+  keySourceHint.value = 'Validating key…';
+  try {
+    const resp = await fetch('/api/validate-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: key })
+    });
+    const data = await resp.json();
+    if (data.valid) {
+      isValidated.value = true;
+      keySourceHint.value = '✓ Validated Key: Custom topics unlocked.';
+      pushLog(`API Key Validated: ${key.slice(0, 8)}...`);
+    } else {
+      isValidated.value = false;
+      keySourceHint.value = '⚠ Invalid Key: Restricted to free topic.';
+      pushLog(`API Key Validation Failed: ${data.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    isValidated.value = false;
+    keySourceHint.value = 'Validation service unavailable.';
+  }
+}
+
+let valTimeout;
+watch(roomId, (newVal) => {
+  if (isEmailAuthed.value) {
+    isValidated.value = true;
+    return;
+  }
+  
+  clearTimeout(valTimeout);
+  valTimeout = setTimeout(() => validateManualKey(newVal), 800);
+});
+
 function startFreeSession() {
   isFreeTier.value = true;
   userPlan.value = 'free';
@@ -399,6 +496,97 @@ function startFreeSession() {
   sessionStorage.setItem('bitfabric-api-key', 'bitfabric-free-tier');
   pushLog('Started Free session (no API key required)');
   connect();
+}
+
+async function joinForum() {
+  isForumVisible.value = !isForumVisible.value;
+  if (!isForumVisible.value) {
+    pushLog('Leaving support forum.');
+    return;
+  }
+
+  pushLog('Joining P2P Support Forum...');
+  
+  // Use the shared free tier room for the forum
+  roomId.value = FORUM_ROOM; 
+  publishTopic.value = FORUM_TOPIC;
+  subscribeTopic.value = FORUM_TOPIC;
+  
+  // Ensure we are connected - if already in free-tier room, no need to reconnect
+  if (!isReady.value) {
+    await connect();
+  } else if (fabric && fabric.roomId !== FORUM_ROOM) {
+    await connect();
+  }
+
+  // Subscribe to forum topic
+  addSubscription();
+  
+  // Trace history from Gun
+  traceForumHistory();
+
+  // Auto-scroll to bottom after a short delay
+  setTimeout(() => {
+    if (forumFeed.value) forumFeed.value.scrollTop = forumFeed.value.scrollHeight;
+  }, 100);
+}
+
+function traceForumHistory() {
+  if (!fabric || !fabric.transport || !fabric.transport.gun) return;
+  const gun = fabric.transport.gun;
+  const room = gun.get(`pubsub-${FORUM_ROOM}`);
+
+  pushLog(`Fetching Support Forum history...`);
+  
+  room.get('messages').map().on((data, id) => {
+    if (!data || !data.data) return;
+    try {
+      const msg = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+      if (msg.topic !== FORUM_TOPIC || !msg.data?.text?.trim()) return;
+
+      // Check if we already have this message
+      if (messages.value.some(m => m.messageId === msg.messageId)) return;
+
+      messages.value.push({
+        topic: msg.topic,
+        from: msg.from,
+        data: msg.data || {},
+        messageId: msg.messageId,
+        receivedAt: msg.timestamp || Date.now()
+      });
+      
+      // Allow larger buffer for forum messages
+      if (messages.value.length > 200) messages.value.shift();
+    } catch (e) {}
+  });
+}
+
+async function sendForumMessage() {
+  if (!forumInput.value.trim() || !fabric || !isReady.value) return;
+
+  const topic = FORUM_TOPIC;
+  const displayAlias = userAlias.value.trim() || (isEmailAuthed.value 
+    ? userEmail.value.split('@')[0] 
+    : `Guest-${peerId.value.slice(0, 4)}`);
+
+  const data = {
+    type: 'chat',
+    text: forumInput.value.trim(),
+    userAlias: displayAlias
+  };
+
+  try {
+    await fabric.publish(topic, data);
+    pushLog(`Sent forum message: ${data.text.slice(0, 20)}...`);
+    forumInput.value = '';
+    
+    // Auto-scroll to bottom
+    setTimeout(() => {
+      if (forumFeed.value) forumFeed.value.scrollTop = forumFeed.value.scrollHeight;
+    }, 50);
+  } catch (err) {
+    pushLog(`Forum send error: ${err.message}`);
+  }
 }
 
 // Helper: create key in database (using immutable account ID)
@@ -496,11 +684,11 @@ if (emailParam) {
         sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
         sessionStorage.setItem('bitfabric-email', authData.email);
         sessionStorage.setItem('bitfabric-password-hash', storedPasswordHash);
-        roomId.value = authData.sessionKey;
-        authApiKey.value = authData.sessionKey;
-        accountId.value = authData.accountId;
-        userEmail.value = authData.email;
-        userPlan.value = authData.plan;
+        roomId.value = authData.sessionKey || '';
+    authApiKey.value = authData.sessionKey || '';
+    accountId.value = authData.accountId || '';
+    userEmail.value = authData.email || '';
+    userPlan.value = authData.plan || 'starter';
         
         // Set default key if returned
         if (authData.defaultKey) {
@@ -570,12 +758,12 @@ async function signInWithEmail() {
     sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
     sessionStorage.setItem('bitfabric-email', authData.email);
     sessionStorage.setItem('bitfabric-password-hash', passwordHash);
-    roomId.value = authData.sessionKey;
+    roomId.value = authData.sessionKey || '';
     sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
-    authApiKey.value = authData.sessionKey;
-    accountId.value = authData.accountId;
-    userEmail.value = authData.email;
-    userPlan.value = authData.plan;
+    authApiKey.value = authData.sessionKey || '';
+    accountId.value = authData.accountId || '';
+    userEmail.value = authData.email || '';
+    userPlan.value = authData.plan || 'starter';
 
     // Load keys list (DB)
     try {
@@ -614,8 +802,15 @@ async function connect() {
     startFreeSession();
   }
 
-  // Server-side validation: skip for free tier
-  if (!isFreeTier.value) {
+  // Server-side validation: skip for free tier OR forum mode
+  if (!isFreeTier.value && !isEmailAuthed.value && !isForumVisible.value) {
+    await validateManualKey(roomId.value);
+    if (!isValidated.value) {
+      pushLog('Connection Restriction: Invalid key prevents connection to custom room.');
+      status.value = 'error';
+      return;
+    }
+  } else if (!isFreeTier.value && isEmailAuthed.value && !isForumVisible.value) {
     try {
       const validateResp = await fetch('/api/validate-key', {
         method: 'POST',
@@ -650,9 +845,10 @@ async function connect() {
   pushLog('Booting fabric…');
 
   try {
-    const effectiveRoomId = (isFreeTier.value && !roomId.value.trim()) 
+    const normalizedRoomId = roomId.value?.trim() || '';
+    const effectiveRoomId = (isFreeTier.value && !normalizedRoomId) 
       ? freeTopic 
-      : (roomId.value.trim() || 'default');
+      : (normalizedRoomId || 'default');
 
     fabric = new PubSubFabric({
       roomId: effectiveRoomId,
@@ -705,16 +901,25 @@ async function disconnect() {
   messages.value = [];
 }
 
+async function navDisconnect(event, url) {
+  event.preventDefault();
+  await disconnect();
+  window.location.href = url;
+}
+
 function publish() {
   if (!fabric || !isReady.value) return;
   let topic = publishTopic.value.trim();
   const dataStr = messageData.value.trim();
   if (!topic || !dataStr) return;
 
-  // Enforce free tier publication topic
-  if (isFreeTier.value && topic !== freeTopic) {
-    pushLog(`Free Tier Restriction: Mapping "${topic}" to "${freeTopic}" for publication.`);
-    topic = freeTopic;
+  // STRICT TOPIC ENFORCEMENT for unvalidated sessions
+  if (!isEmailAuthed.value && !isValidated.value) {
+    const permitted = isForumVisible.value ? FORUM_TOPIC : freeTopic;
+    if (topic !== permitted) {
+      pushLog(`Strict Enforcement: Mapping "${topic}" to "${permitted}" for unvalidated session.`);
+      topic = permitted;
+    }
   }
 
   try {
@@ -767,7 +972,7 @@ function addSubscription() {
       messageId: `${message.from}-${message.topic}-${Date.now()}`,
       receivedAt: message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
     });
-    if (messages.value.length > 50) messages.value.pop();
+    if (messages.value.length > 200) messages.value.pop();
   });
   
   unsubscribeFunctions.set(topic, unsub);

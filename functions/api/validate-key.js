@@ -24,7 +24,7 @@ async function computeAccountId(email) {
   const accountHashBuffer = await crypto.subtle.digest('SHA-256', accountData);
   const accountHashArray = Array.from(new Uint8Array(accountHashBuffer));
   const accountHash = accountHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return `${accountHash.substr(0,8)}-${accountHash.substr(8,4)}-${accountHash.substr(12,4)}-${accountHash.substr(16,4)}-${accountHash.substr(20,12)}`;
+  return `${accountHash.substr(0, 8)}-${accountHash.substr(8, 4)}-${accountHash.substr(12, 4)}-${accountHash.substr(16, 4)}-${accountHash.substr(20, 12)}`;
 }
 
 export async function onRequestPost(context) {
@@ -35,31 +35,24 @@ export async function onRequestPost(context) {
     const email = normalizeEmail(body?.email);
     const apiKey = typeof body?.apiKey === 'string' ? body.apiKey.trim() : '';
 
-    if (!email) {
-      return new Response(JSON.stringify({ error: 'Missing email', valid: false }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    let row;
+    if (email) {
+      const accountId = await computeAccountId(email);
+      if (!accountId) {
+        return new Response(JSON.stringify({ error: 'Invalid email', valid: false }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      row = await env.DB.prepare(
+        'SELECT key_id, name, description, value, created_at, permanent FROM api_keys WHERE account_id = ? AND value = ? LIMIT 1'
+      ).bind(accountId, apiKey).first();
+    } else {
+      // Global lookup by value (for guests with manual keys)
+      row = await env.DB.prepare(
+        'SELECT key_id, name, description, value, created_at, permanent FROM api_keys WHERE value = ? LIMIT 1'
+      ).bind(apiKey).first();
     }
-
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'Missing apiKey', valid: false }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const accountId = await computeAccountId(email);
-    if (!accountId) {
-      return new Response(JSON.stringify({ error: 'Invalid email', valid: false }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const row = await env.DB.prepare(
-      'SELECT key_id, name, description, value, created_at, permanent FROM api_keys WHERE account_id = ? AND value = ? LIMIT 1'
-    ).bind(accountId, apiKey).first();
 
     if (!row) {
       return new Response(JSON.stringify({ valid: false, error: 'API key not found' }), {
@@ -70,8 +63,7 @@ export async function onRequestPost(context) {
 
     return new Response(JSON.stringify({
       valid: true,
-      email,
-      accountId,
+      email: email || null,
       key: row
     }), {
       status: 200,

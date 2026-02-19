@@ -17,10 +17,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
   permanent INTEGER NOT NULL DEFAULT 0,
 
   PRIMARY KEY (account_id, key_id),
-  UNIQUE (value),
-
-  -- No separate accounts table required.
-  -- The account_id groups keys; key_id distinguishes keys within an account.
+  UNIQUE (value)
 );
 
 CREATE INDEX IF NOT EXISTS idx_api_keys_account_id ON api_keys(account_id);

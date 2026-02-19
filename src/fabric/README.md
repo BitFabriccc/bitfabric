@@ -93,18 +93,10 @@ unsubscribe();
 ```
 
 ##### `publish(topic, data)`
-Publish data to a topic. Flows over WebRTC to all interested peers.
+Publish data to a topic. Flows through Gun and Nostr relays to all interested peers.
 
 ```javascript
 fabric.publish('events', { type: 'update', value: 42 });
-```
-
-##### `getConnectedPeers()`
-Get array of connected peer IDs.
-
-```javascript
-const peers = fabric.getConnectedPeers();
-console.log('Connected to', peers.length, 'peers');
 ```
 
 ##### `getStats()`
@@ -113,17 +105,14 @@ Get fabric statistics.
 ```javascript
 const stats = fabric.getStats();
 // {
-//   peersDiscovered: 5,
-//   peersConnected: 3,
 //   messagesPublished: 10,
 //   messagesReceived: 15,
-//   connectedPeers: 3,
 //   topics: 2
 // }
 ```
 
 ##### `async destroy()`
-Cleanup and disconnect all peers and transports.
+Cleanup and disconnect from all transports.
 
 ```javascript
 await fabric.destroy();
@@ -131,41 +120,21 @@ await fabric.destroy();
 
 ## How It Works
 
-### 1. Discovery Phase
-- Nostr relays announce peer presence
-- Tracker discovers peers via WebTorrent protocol
-- Gun syncs peer list across distributed nodes
+### 1. Transport Phase
+- **Gun**: Acts as a distributed database and real-time messaging carrier.
+- **Nostr**: Provides a decentralized relay network for message publication.
 
-### 2. Connection Phase
-- Peers exchange WebRTC offers/answers via transports
-- Direct peer-to-peer data channels established
-- Subscriptions are shared between connected peers
-
-### 3. Messaging Phase
-- Publishers send to topic (flows over WebRTC)
-- Router forwards to interested peers
-- Subscribers receive via their callbacks
-- Deduplication prevents message loops
-
-### 4. Routing
-```
-Peer A (publishes "chat") 
-  ↓ WebRTC
-Peer B (interested in "chat")
-  ↓ WebRTC  
-Peer C (interested in "chat")
-  ↓ WebRTC
-Peer D (NOT interested)  ← No message sent
-```
+### 2. Messaging Phase
+- Publishers send to topic (flows through Gun + Nostr relays).
+- Subscribers receive via their callbacks from the same relays.
+- Deduplication prevents message loops and duplicate processing.
 
 ## Transport Comparison
 
 | Transport | Purpose | Speed | Reliability |
 |-----------|---------|-------|-------------|
-| **Nostr** | Primary signaling | Fast | High (multi-relay) |
-| **Tracker** | Peer discovery | Fast | Medium (single tracker) |
-| **Gun** | Backup signaling | Medium | High (distributed) |
-| **WebRTC** | All data | Very Fast | High (direct P2P) |
+| **Gun** | Primary messaging | Fast | High (distributed) |
+| **Nostr** | Secondary messaging | Fast | High (multi-relay) |
 
 ## Benefits
 

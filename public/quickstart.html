@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -100,10 +101,21 @@
       color: inherit;
     }
 
-    .keyword { color: #f92672; }
-    .string { color: #e6db74; }
-    .function { color: #a6e22e; }
-    .comment { color: #75715e; }
+    .keyword {
+      color: #f92672;
+    }
+
+    .string {
+      color: #e6db74;
+    }
+
+    .function {
+      color: #a6e22e;
+    }
+
+    .comment {
+      color: #75715e;
+    }
 
     table {
       width: 100%;
@@ -111,7 +123,8 @@
       margin: 20px 0;
     }
 
-    th, td {
+    th,
+    td {
       padding: 12px;
       text-align: left;
       border-bottom: 1px solid #ddd;
@@ -164,7 +177,7 @@
       header h1 {
         font-size: 2em;
       }
-      
+
       main {
         padding: 20px;
       }
@@ -175,6 +188,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <header>
@@ -186,65 +200,71 @@
       <!-- Installation -->
       <section>
         <h2>Installation</h2>
-        <p>Clone and run the development server:</p>
-        <pre><code>npm install
-npm run dev
-# Open http://localhost:5173</code></pre>
-
-        <h3>Install as a package</h3>
-        <p>If/when BitFabric is published to npm, install it like this:</p>
+        <p>BitFabric is designed for zero-friction integration. Add it to your project with one command:</p>
         <pre><code>npm install bitfabric</code></pre>
+
+        <h3>Instant Demo</h3>
+        <p>Want to see it in action without coding? Open our <strong><a href="/index.html">Web Console</a></strong> and
+          hit
+          <strong>Connect</strong>.
+        </p>
       </section>
 
       <!-- Basic Usage -->
-      <section>
-        <h2>Basic Usage</h2>
+      <section id="api-reference">
+        <h2>Instant P2P Messaging</h2>
 
-        <h3>1. Initialize the Fabric</h3>
-        <p>Create a new pub/sub fabric instance:</p>
+        <h3>1. Initialize (Zero Config)</h3>
+        <p>Create a fabric instance using the global <strong>Free Tier</strong>. No registration required.</p>
         <div class="code-section">
-          <pre><code><span class="keyword">import</span> { PubSubFabric } <span class="keyword">from</span> <span class="string">'./src/fabric/index.js'</span>;
+          <pre><code><span class="keyword">import</span> { PubSubFabric } <span class="keyword">from</span> <span class="string">'bitfabric'</span>;
 
 <span class="keyword">const</span> fabric = <span class="keyword">new</span> PubSubFabric({
-  roomId: <span class="string">'my-chat-room'</span>,
-  nostrRelays: [<span class="string">'wss://relay.damus.io'</span>, <span class="string">'wss://relay.nostr.band'</span>]
+  roomId: <span class="string">'bitfabric-free-tier'</span>
 });
 
 <span class="keyword">await</span> fabric.<span class="function">init</span>();</code></pre>
         </div>
 
         <h3>2. Subscribe to a Topic</h3>
-        <p>Listen for messages on a topic:</p>
+        <p>Listen for real-time messages on any channel:</p>
         <div class="code-section">
-          <pre><code>fabric.<span class="function">subscribe</span>(<span class="string">'messages'</span>, (message) => {
-  console.<span class="function">log</span>(<span class="string">`${message.from}: ${message.data.text}`</span>);
+          <pre><code>fabric.<span class="function">subscribe</span>(<span class="string">'general-support'</span>, (message) => {
+  console.<span class="function">log</span>(<span class="string">`From ${message.from}: ${message.data.text}`</span>);
 });</code></pre>
         </div>
 
         <h3>3. Publish a Message</h3>
-        <p>Send data to all subscribers:</p>
+        <p>Broadcast data across the global mesh instantly:</p>
         <div class="code-section">
-          <pre><code>fabric.<span class="function">publish</span>(<span class="string">'messages'</span>, { 
-  text: <span class="string">'Hello from BitFabric!'</span>,
-  timestamp: Date.<span class="function">now</span>()
+          <pre><code>fabric.<span class="function">publish</span>(<span class="string">'general-support'</span>, { 
+  text: <span class="string">'Hello from my decentralized app!'</span>
 });</code></pre>
         </div>
+      </section>
 
-        <h3>4. Unsubscribe</h3>
-        <p>Stop listening to a topic:</p>
-        <div class="code-section">
-          <pre><code><span class="keyword">const</span> unsubscribe = fabric.<span class="function">subscribe</span>(<span class="string">'events'</span>, handler);
-<span class="comment">// Later...</span>
-<span class="function">unsubscribe</span>();</code></pre>
+      <!-- Advanced Validation -->
+      <section id="deployment">
+        <h2>Going Pro: Custom Rooms</h2>
+        <p>When you're ready for dedicated namespaces and custom topics, upgrade to a <strong>Validated
+            Session</strong>.</p>
+        <ul>
+          <li><strong>Step 1</strong>: Sign up at <a href="/signup.html">bitfabric.cc</a> to get your API Key.</li>
+          <li><strong>Step 2</strong>: Use your key to unlock custom <code>roomId</code> namespaces.</li>
+          <li><strong>Step 3</strong>: Publish to restricted topics without mapping limits.</li>
+        </ul>
+        <div class="note">
+          <strong>Note:</strong> Free Tier users are automatically remapped to <code>bitfabric-free-tier</code> to
+          ensure network stability for everyone.
         </div>
       </section>
 
       <!-- Chat Demo -->
-      <section>
+      <section id="examples">
         <h2>Chat Demo Example</h2>
         <p>Complete working example:</p>
         <div class="code-section">
-          <pre><code><span class="keyword">import</span> { createChatDemo } <span class="keyword">from</span> <span class="string">'./src/fabric/demo.js'</span>;
+          <pre><code><span class="keyword">import</span> { createChatDemo } <span class="keyword">from</span> <span class="string">'bitfabric/demo'</span>;
 
 <span class="comment">// Create a chat room</span>
 <span class="keyword">const</span> chat = <span class="keyword">await</span> <span class="function">createChatDemo</span>(<span class="string">'room-name'</span>);
@@ -291,7 +311,7 @@ topics.<span class="function">forEach</span>(topic => {
       </section>
 
       <!-- Architecture -->
-      <section>
+      <section id="architecture">
         <h2>How It Works</h2>
         <p>BitFabric uses a dual-transport pub/sub architecture:</p>
         <table>
@@ -318,7 +338,8 @@ topics.<span class="function">forEach</span>(topic => {
         </table>
 
         <div class="note">
-          <strong>Message Flow:</strong> Client → Gun Relay (encrypted) → Subscribers + Nostr Relay (encrypted) → Additional reach
+          <strong>Message Flow:</strong> Client → Gun Relay (encrypted) → Subscribers + Nostr Relay (encrypted) →
+          Additional reach
         </div>
       </section>
 
@@ -370,7 +391,8 @@ fabric.<span class="function">on</span>(<span class="string">'error'</span>, (er
         <h2>Next Steps</h2>
         <ul>
           <li>Open the <strong><a href="/">BitFabric app</a></strong> to publish/subscribe in the browser</li>
-          <li>Read the full architecture notes in <strong><a href="https://github.com/">the repo</a></strong> (src/fabric/README.md)</li>
+          <li>Read the full architecture notes in <strong><a href="https://github.com/">the repo</a></strong>
+            (src/fabric/README.md)</li>
         </ul>
       </section>
     </main>
@@ -381,4 +403,5 @@ fabric.<span class="function">on</span>(<span class="string">'error'</span>, (er
     </footer>
   </div>
 </body>
+
 </html>
