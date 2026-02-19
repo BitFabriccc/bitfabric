@@ -3,6 +3,35 @@
     <div class="grid-bg"></div>
     <div class="app-shell">
       <section class="hero">
+        <div class="logo-container">
+          <svg width="420" height="220" viewBox="0 0 420 220" xmlns="http://www.w3.org/2000/svg" class="main-logo">
+            <g transform="translate(210, 110)">
+              <!-- Outer indigo border -->
+              <ellipse cx="0" cy="0" rx="195" ry="95" fill="#4e5cc4" />
+              <!-- White middle border -->
+              <ellipse cx="0" cy="0" rx="188" ry="88" fill="white" />
+              <!-- Main green oval (Site accent) -->
+              <ellipse cx="0" cy="0" rx="180" ry="80" fill="#1ed2af" />
+              
+              <!-- "BIT" Text - Shifted LEFT and DOWN (y="16") for perfect border contact -->
+              <text 
+                x="-15" 
+                y="16"
+                font-family="'Space Grotesk', sans-serif" 
+                font-size="155" 
+                font-weight="700" 
+                fill="white" 
+                stroke="white"
+                stroke-width="6"
+                paint-order="stroke fill"
+                text-anchor="middle"
+                dominant-baseline="middle"
+                style="font-style: italic; letter-spacing: -4px;"
+                transform="skewX(-5)"
+              >BIT</text>
+            </g>
+          </svg>
+        </div>
         <div class="badge">Real-Time Messaging</div>
         <h1>BitFabric PubSub</h1>
         <p>
@@ -33,8 +62,8 @@
       </section>
 
       <div class="card-grid">
-        <!-- Account Card: only show for non-free users -->
-        <div class="card" v-if="!isFreeTier">
+        <!-- Account Card: always show -->
+        <div class="card">
           <h3>{{ isEmailAuthed ? 'Managed Account' : 'Account' }}</h3>
           
           <div v-if="!isEmailAuthed" class="signin-form-compact">
@@ -56,7 +85,7 @@
           </div>
           
           <div v-else class="account-info">
-            <p><strong>Plan:</strong> {{ userPlan.toUpperCase() }}</p>
+            <p><strong>Plan:</strong> {{ (userPlan || 'Starter').toUpperCase() }}</p>
             <p v-if="userEmail"><strong>Email:</strong> {{ userEmail }}</p>
             <button class="btn-ghost" @click="logout" style="margin-top: 12px; width: 100%; border: 1px solid #ff6b6b; color: #ff6b6b;">
               Switch Session / Logout
@@ -64,12 +93,48 @@
           </div>
         </div>
 
+        <!-- API Keys (Active Session) -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3 style="margin:0;">API Key</h3>
+            <span v-if="isEmailAuthed && userPlan !== 'pro' && userPlan !== 'enterprise'" class="tag" style="background:#fef3c7;color:#92400e;border:none;">Starter</span>
+            <span v-else-if="!isEmailAuthed" class="tag">Guest</span>
+          </div>
+          
+          <div v-if="!isEmailAuthed" class="manual-key-entry">
+            <p class="muted" style="margin-bottom: 12px;">Paste an API key below or sign in to use managed keys.</p>
+            <div class="field-compact">
+              <input v-model="roomId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+            </div>
+          </div>
+
+          <div v-else class="managed-keys">
+            <div class="keys-list" v-if="apiKeys.length > 0" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+              <div v-for="key in apiKeys" :key="key.id" 
+                   class="key-item" 
+                   :class="{ active: roomId === key.key }"
+                   style="padding:10px;border:1.5px solid var(--border-color);border-radius:12px;cursor:pointer;transition:all 0.2s;"
+                   @click="roomId = key.key">
+                <div style="font-weight:600;font-size:14px;">{{ key.name || 'Default' }}</div>
+                <code style="font-size:12px;color:var(--primary-color);">{{ key.key.slice(0, 12) }}...</code>
+              </div>
+            </div>
+            <div v-else class="empty-keys">No keys found.</div>
+            
+            <div v-if="userPlan === 'pro' || userPlan === 'enterprise'" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color);">
+              <button class="btn-outline btn-sm" @click="createKey">+ New Key</button>
+            </div>
+            <div v-else style="margin-top:12px;font-size:12px;color:var(--text-muted);text-align:center;">
+               <a href="/pricing" target="_blank" style="color:var(--primary-color);">Upgrade for full management</a>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <h3>Publish</h3>
           <div class="field">
             <label for="topic">Topic</label>
-            <div v-if="isFreeTier" class="locked-topic">{{ freeTopic }} <span class="lock-badge">🔒 Free Tier</span></div>
-            <input v-else id="topic" v-model="publishTopic" placeholder="e.g., events, data, notifications" autocomplete="off" />
+            <input id="topic" v-model="publishTopic" placeholder="e.g., events, data" autocomplete="off" />
           </div>
           <div class="field">
             <label for="message">Message Data (JSON)</label>
@@ -112,7 +177,10 @@
             </div>
           </div>
           <div class="tag-row" style="margin-top: 10px;">
-            <span class="tag" :style="{ background: isReady ? '#48bb78' : '#718096' }">
+            <span 
+              class="status-pill" 
+              :class="{ 'status-active': isReady, 'status-connecting': isConnecting, 'status-offline': !isReady && !isConnecting }"
+            >
               Network: {{ isReady ? 'Active' : isConnecting ? 'Connecting...' : 'Offline' }}
             </span>
             <span class="tag">Protocol: P2P</span>
@@ -123,8 +191,7 @@
           <h3>Subscribe</h3>
           <div class="field">
             <label for="subtopic">Topic</label>
-            <div v-if="isFreeTier" class="locked-topic">{{ freeTopic }} <span class="lock-badge">🔒 Free Tier</span></div>
-            <input v-else id="subtopic" v-model="subscribeTopic" placeholder="e.g., events, data" autocomplete="off" />
+            <input id="subtopic" v-model="subscribeTopic" placeholder="e.g., events, data" autocomplete="off" />
           </div>
           <div class="hero-actions">
             <button class="btn-primary" :disabled="!isReady || !subscribeTopic.trim()" @click="addSubscription">
@@ -221,7 +288,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { PubSubFabric } from './fabric/index.js';
 
 // Check sessionStorage for stored API key (don't use URL for security)
@@ -232,10 +299,7 @@ const accountId = ref('');
 const signInEmail = ref('');
 const signInPassword = ref('');
 // New visitors with no session are always free tier by default
-const isFreeTier = ref(
-  sessionStorage.getItem('bitfabric-free-tier') === 'true' ||
-  !sessionStorage.getItem('bitfabric-email')
-);
+const isFreeTier = ref(sessionStorage.getItem('bitfabric-free-tier') === 'true');
 const freeTopic = 'bitfabric-free-tier';
 const publishTopic = ref(isFreeTier.value ? freeTopic : 'events');
 const subscribeTopic = ref(isFreeTier.value ? freeTopic : 'events');
@@ -260,6 +324,19 @@ const stats = ref({
   transport: {
     transport1: { published: 0, received: 0 },
     transport2: { published: 0, received: 0 }
+  }
+});
+
+// Set initial defaults for free tier
+if (isFreeTier.value && !storedApiKey) {
+  publishTopic.value = freeTopic;
+  subscribeTopic.value = freeTopic;
+}
+
+// Watch for auth changes to update state, but don't force topics (allow testing)
+watch(isEmailAuthed, (authed) => {
+  if (!authed) {
+    isFreeTier.value = true;
   }
 });
 
@@ -573,8 +650,12 @@ async function connect() {
   pushLog('Booting fabric…');
 
   try {
+    const effectiveRoomId = (isFreeTier.value && !roomId.value.trim()) 
+      ? freeTopic 
+      : (roomId.value.trim() || 'default');
+
     fabric = new PubSubFabric({
-      roomId: roomId.value.trim() || 'default',
+      roomId: effectiveRoomId,
       nostrRelays
     });
 
@@ -626,9 +707,15 @@ async function disconnect() {
 
 function publish() {
   if (!fabric || !isReady.value) return;
-  const topic = publishTopic.value.trim();
+  let topic = publishTopic.value.trim();
   const dataStr = messageData.value.trim();
   if (!topic || !dataStr) return;
+
+  // Enforce free tier publication topic
+  if (isFreeTier.value && topic !== freeTopic) {
+    pushLog(`Free Tier Restriction: Mapping "${topic}" to "${freeTopic}" for publication.`);
+    topic = freeTopic;
+  }
 
   try {
     const data = JSON.parse(dataStr);
@@ -811,6 +898,23 @@ if (isFreeTier.value && !userEmail.value) {
   color: var(--muted);
 }
 
+.logo-container {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.main-logo {
+  height: clamp(80px, 15vh, 160px);
+  width: auto;
+  filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.4));
+  transition: transform 0.3s ease;
+}
+
+.main-logo:hover {
+  transform: scale(1.05) rotate(-2deg);
+}
+
 .signin-form-compact {
   display: flex;
   flex-direction: column;
@@ -858,5 +962,34 @@ if (isFreeTier.value && !userEmail.value) {
   border-radius: 4px;
   color: #718096;
   white-space: nowrap;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-active {
+  background: linear-gradient(135deg, var(--accent), #13b892);
+  color: white;
+  box-shadow: 0 4px 15px rgba(30, 210, 175, 0.2);
+}
+
+.status-connecting {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f2a516;
+  border-color: rgba(242, 165, 22, 0.3);
+}
+
+.status-offline {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
 }
 </style>

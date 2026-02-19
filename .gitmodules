@@ -1,0 +1,3 @@
+[submodule "NPM/bitfabric"]
+	path = NPM/bitfabric
+	url = https://github.com/draeder/bitfabric

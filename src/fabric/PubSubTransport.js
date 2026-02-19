@@ -60,6 +60,13 @@ export class PubSubTransport {
   }
 
   /**
+   * Decrypt data with the topic-derived AES-GCM key (public)
+   */
+  async decryptForTopic(topic, iv, ciphertext) {
+    return this._decryptForTopic(topic, iv, ciphertext);
+  }
+
+  /**
    * Initialize transports
    */
   async init() {
@@ -234,15 +241,20 @@ export class PubSubTransport {
    * Decrypt data with the topic-derived AES-GCM key.
    */
   async _decryptForTopic(topic, iv, ciphertext) {
-    const key = await this._getTopicKey(topic);
-    const fromBase64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-    const dec = new TextDecoder();
-    const plainBuffer = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: fromBase64(iv) },
-      key,
-      fromBase64(ciphertext)
-    );
-    return JSON.parse(dec.decode(plainBuffer));
+    try {
+      const key = await this._getTopicKey(topic);
+      const fromBase64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+      const dec = new TextDecoder();
+      const plainBuffer = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: fromBase64(iv) },
+        key,
+        fromBase64(ciphertext)
+      );
+      return JSON.parse(dec.decode(plainBuffer));
+    } catch (err) {
+      console.warn(`[PubSub] Decryption failed for topic "${topic}":`, err.message);
+      throw err;
+    }
   }
 
   /**
@@ -250,6 +262,10 @@ export class PubSubTransport {
    */
   async handleMessage(source, from, payload) {
     if (!payload || !payload.topic) return;
+
+    // Diagnostic log for incoming raw payload
+    console.log(`[PubSub] << RCV [${source}] from: ${from?.slice(0, 8)} topic: ${payload.topic}`,
+      payload.topicEncrypted ? '(ENCRYPTED)' : '(PLAIN)');
 
     let decryptedPayload = { ...payload };
 
@@ -259,10 +275,12 @@ export class PubSubTransport {
         decryptedPayload.data = await this._decryptForTopic(
           payload.topic, payload.iv, payload.ciphertext
         );
+        console.log(`[PubSub] << DEC [${source}] topic: ${payload.topic} SUCCESS`);
         delete decryptedPayload.topicEncrypted;
         delete decryptedPayload.iv;
         delete decryptedPayload.ciphertext;
       } catch (err) {
+        console.error(`[PubSub] << DEC [${source}] topic: ${payload.topic} FAILED:`, err.message);
         return; // Wrong topic key or corrupted — drop
       }
     } else if (!decryptedPayload.data) {

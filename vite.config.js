@@ -23,7 +23,7 @@ export default defineConfig({
     'process.env': {}
   },
   optimizeDeps: {
-    include: ['gun', 'simple-peer', 'bittorrent-tracker/client', 'buffer']
+    include: ['gun', 'buffer']
   },
   build: {
     target: 'esnext',

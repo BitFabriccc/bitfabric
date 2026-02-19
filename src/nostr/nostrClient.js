@@ -130,8 +130,11 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
       try {
         payload = JSON.parse(nostrEvent.content);
       } catch {
+        console.warn(`[Nostr] Failed to parse event content from ${nostrEvent.pubkey?.slice(0, 8)}`);
         return;
       }
+
+      console.log(`[Nostr] << EVENT from ${nostrEvent.pubkey?.slice(0, 8)} room: ${state.room}`);
 
       try {
         onPayload?.({
@@ -140,8 +143,8 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
           eventId: nostrEvent.id,
           createdAt: nostrEvent.created_at,
         });
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error('[Nostr] Error in onPayload callback:', err.message);
       }
     }
   }
@@ -198,6 +201,7 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
       limit: 50,
     };
 
+    console.log(`[Nostr] Subscribing to room: ${state.room} (since: ${since})`);
     sendRaw(['REQ', state.subId, filter]);
 
     setState('connected');
@@ -206,6 +210,7 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
   async function send(payload) {
     ensureKeys();
     const signed = buildSignedEvent(payload);
+    console.log(`[Nostr] >> SEND EVENT room: ${state.room}`);
     sendRaw(['EVENT', signed]);
     return signed.id;
   }

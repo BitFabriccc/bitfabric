@@ -1,0 +1,28 @@
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&amp;display=swap');
+    </style>
+  </defs>
+  <!-- Outer indigo border -->
+  <ellipse cx="200" cy="100" rx="195" ry="95" fill="#4e5cc4" />
+  <!-- White middle border -->
+  <ellipse cx="200" cy="100" rx="188" ry="88" fill="white" />
+  <!-- Main green oval (Site accent #1ed2af) -->
+  <ellipse cx="200" cy="100" rx="180" ry="80" fill="#1ed2af" />
+  
+  <!-- "BIT" Text using site font 'Space Grotesk' -->
+  <text 
+    x="200" 
+    y="100" 
+    font-family="'Space Grotesk', sans-serif" 
+    font-size="140" 
+    font-weight="700" 
+    fill="white" 
+    text-anchor="middle"
+    dominant-baseline="middle"
+    style="font-style: italic; letter-spacing: -2px;"
+    transform="skewX(-5)"
+    transform-origin="200 100"
+  >BIT</text>
+</svg>
