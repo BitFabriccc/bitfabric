@@ -307,6 +307,7 @@ export class PubSubTransport {
       source,
       from,
       topic,
+      messageId: msgId,
       data: decryptedPayload.data,
       timestamp: decryptedPayload.timestamp
     };

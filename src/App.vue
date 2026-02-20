@@ -538,11 +538,27 @@ function traceForumHistory() {
 
   pushLog(`Fetching Support Forum history...`);
   
-  room.get('messages').map().on((data, id) => {
+  room.get('messages').map().on(async (data, id) => {
     if (!data || !data.data) return;
     try {
       const msg = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-      if (msg.topic !== FORUM_TOPIC || !msg.data?.text?.trim()) return;
+      if (msg.topic !== FORUM_TOPIC) return;
+
+      let payloadData = msg.data;
+
+      // Handle encrypted messages from _encryptForTopic
+      if (msg.topicEncrypted && msg.iv && msg.ciphertext) {
+        try {
+          payloadData = await fabric.transport._decryptForTopic(
+             msg.topic, msg.iv, msg.ciphertext
+          );
+        } catch (err) {
+          console.error('[App] Failed to decrypt history message:', err);
+          return;
+        }
+      }
+
+      if (!payloadData?.text?.trim()) return;
 
       // Check if we already have this message
       if (messages.value.some(m => m.messageId === msg.messageId)) return;
@@ -550,14 +566,16 @@ function traceForumHistory() {
       messages.value.push({
         topic: msg.topic,
         from: msg.from,
-        data: msg.data || {},
+        data: payloadData || {},
         messageId: msg.messageId,
         receivedAt: msg.timestamp || Date.now()
       });
       
       // Allow larger buffer for forum messages
       if (messages.value.length > 200) messages.value.shift();
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[App] Error processing history message:', e);
+    }
   });
 }
 
@@ -933,7 +951,7 @@ function publish() {
           topic: message.topic || topic,
           from: message.from || 'unknown',
           data: message.data || {},
-          messageId: `${message.from}-${message.topic}-${Date.now()}`,
+          messageId: message.messageId || `${message.from}-${message.topic}-${Date.now()}`,
           receivedAt: message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
         });
         if (messages.value.length > 50) messages.value.pop();
@@ -969,7 +987,7 @@ function addSubscription() {
       topic: message.topic || topic,
       from: message.from || 'unknown',
       data: message.data || {},
-      messageId: `${message.from}-${message.topic}-${Date.now()}`,
+      messageId: message.messageId || `${message.from}-${message.topic}-${Date.now()}`,
       receivedAt: message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
     });
     if (messages.value.length > 200) messages.value.pop();
