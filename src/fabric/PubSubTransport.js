@@ -364,6 +364,7 @@ export class PubSubTransport {
     try {
       encrypted = await this._encryptForTopic(topic, data);
     } catch (err) {
+      console.error(`[PubSub] Encryption failed for topic "${topic}":`, err.message || err);
       encrypted = null;
     }
 
