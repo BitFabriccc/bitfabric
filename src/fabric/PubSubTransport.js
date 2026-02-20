@@ -47,7 +47,7 @@ export class PubSubTransport {
     // Topic subscriptions: topic -> Set<callback>
     this.subscriptions = new Map();
 
-    // Message cache: topic -> last message (for replay on subscribe)
+    // Message cache: topic -> array of recent messages (for replay on subscribe)
     this.topicCache = new Map();
 
     // Message deduplication
@@ -311,7 +311,14 @@ export class PubSubTransport {
       data: decryptedPayload.data,
       timestamp: decryptedPayload.timestamp
     };
-    this.topicCache.set(topic, cachedMessage);
+
+    let cache = this.topicCache.get(topic);
+    if (!cache) {
+      cache = [];
+      this.topicCache.set(topic, cache);
+    }
+    cache.push(cachedMessage);
+    if (cache.length > 50) cache.shift();
 
     if (topic && this.subscriptions.has(topic)) {
       const callbacks = this.subscriptions.get(topic);
@@ -331,11 +338,13 @@ export class PubSubTransport {
 
     this.subscriptions.get(topic).add(callback);
 
-    // Deliver cached message immediately if one exists for this topic
+    // Deliver cached messages immediately if they exist for this topic
     if (this.topicCache.has(topic)) {
-      const cachedMessage = this.topicCache.get(topic);
+      const cachedMessages = this.topicCache.get(topic);
       setTimeout(() => {
-        try { callback(cachedMessage); } catch (err) { }
+        cachedMessages.forEach(msg => {
+          try { callback(msg); } catch (err) { }
+        });
       }, 0);
     }
 
