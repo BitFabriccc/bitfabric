@@ -89,40 +89,30 @@ export class PubSubTransport {
   }
 
   /**
-   * Initialize network relays - try primary first, stop once connected
+   * Initialize network relays - connect to all primaries for redundancy
    */
   async initNostr() {
-    // Try primary relays first
-    for (const relayUrl of this.primaryRelays) {
-      try {
-        await Promise.race([
+    // Try primary relays first (all concurrently)
+    await Promise.allSettled(
+      this.primaryRelays.map(relayUrl =>
+        Promise.race([
           this.initNostrRelay(relayUrl),
           new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-        ]);
-        // If we got a successful connection, stop trying others
-        if (this.nostrClients.length >= 1) {
-          return;
-        }
-      } catch (err) {
-        // Continue to next relay
-      }
-    }
+        ])
+      )
+    );
 
-    // If primary relays didn't connect, try fallbacks one more time
-    const fallbackRelays = this.nostrRelays.filter(r => !this.primaryRelays.includes(r));
-    for (const relayUrl of fallbackRelays) {
-      try {
-        await Promise.race([
-          this.initNostrRelay(relayUrl),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-        ]);
-        // If we got a successful connection, stop
-        if (this.nostrClients.length >= 1) {
-          return;
-        }
-      } catch (err) {
-        // Continue to next relay
-      }
+    // If no primary relay connected, try fallbacks concurrently
+    if (this.nostrClients.length === 0) {
+      const fallbackRelays = this.nostrRelays.filter(r => !this.primaryRelays.includes(r));
+      await Promise.allSettled(
+        fallbackRelays.map(relayUrl =>
+          Promise.race([
+            this.initNostrRelay(relayUrl),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+          ])
+        )
+      );
     }
   }
 
