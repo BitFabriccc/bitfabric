@@ -261,9 +261,9 @@ async function initNetwork() {
         };
 
         // Subscribe to common global topics to seed metrics
-        fabric.subscribeTopic('bitfabric-global-tier');
-        fabric.subscribeTopic('general-support');
-        fabric.subscribeTopic('events');
+        fabric.subscribe('bitfabric-global-tier', () => { });
+        fabric.subscribe('general-support', () => { });
+        fabric.subscribe('events', () => { });
 
     } catch (err) {
         elFeedStatus.textContent = 'Connection Failed';
