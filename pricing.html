@@ -289,15 +289,15 @@
     <div class="calculator">
       <h3>Estimate your monthly usage</h3>
       <div class="slider-container">
-        <input type="range" min="0" max="100" value="1" class="slider" id="volumeSlider">
+        <input type="range" min="0" max="1000" value="1" class="slider" id="volumeSlider">
         <div class="slider-labels">
           <span>0</span>
-          <span>50M</span>
-          <span>100M+</span>
+          <span>500M</span>
+          <span>1B+</span>
         </div>
       </div>
       <div class="volume-display">
-        <span id="volumeValue">1 Million</span> messages/month
+        <span id="volumeValue">10 Million</span> messages/month
       </div>
     </div>
 
@@ -309,7 +309,7 @@
         <div class="price">$0</div>
         <p class="billing">Forever free</p>
         <ul class="features">
-          <li>10k messages/month</li>
+          <li>10M messages/month</li>
           <li>No email required</li>
           <li>No API key required</li>
           <li>Community support</li>
@@ -321,7 +321,7 @@
       <div class="plan featured" id="planStarter">
         <div class="badge">POPULAR</div>
         <div class="plan-name">Starter</div>
-        <p class="plan-desc">Up to 10M messages ($0.50/1M)</p>
+        <p class="plan-desc">Up to 250M messages ($0.10/1M)</p>
         <div class="price" id="priceStarter">$5</div>
         <p class="billing">per month</p>
         <ul class="features">
@@ -338,7 +338,7 @@
       <!-- Scale Plan -->
       <div class="plan" id="planScale">
         <div class="plan-name">Scale</div>
-        <p class="plan-desc">10M - 100M messages ($0.25/1M)</p>
+        <p class="plan-desc">250M+ messages ($0.05/1M)</p>
         <div class="price" id="priceScale">$25</div>
         <p class="billing">per month</p>
         <ul class="features">
@@ -403,7 +403,7 @@
     let currentPricing = {
       starter: 500, // min $5
       scale: 2500, // min $25
-      volume: 1
+      volume: 10
     };
 
     const slider = document.getElementById("volumeSlider");
@@ -413,70 +413,66 @@
     const planStarter = document.getElementById("planStarter");
     const planScale = document.getElementById("planScale");
 
-    slider.addEventListener("input", function() {
+    slider.addEventListener("input", function () {
       const vol = parseInt(this.value);
-      
+
       // Calculate display string for volume
       if (vol === 0) {
-        volumeValue.textContent = "10k";
-        currentPricing.volume = 0.01;
-      } else if (vol === 100) {
-        volumeValue.textContent = "100M+";
-        currentPricing.volume = 100;
+        volumeValue.textContent = "10M";
+        currentPricing.volume = 10;
+      } else if (vol === 1000) {
+        volumeValue.textContent = "1B+";
+        currentPricing.volume = 1000;
       } else {
         volumeValue.textContent = vol + " Million";
         currentPricing.volume = vol;
       }
-      
+
       calculatePricing(vol);
     });
 
     function calculatePricing(vol) {
       if (vol === 0) {
-        // Free tier level
+        // Free tier level (10M messages)
         currentPricing.starter = 500; // minimum
         currentPricing.scale = 2500; // minimum
-        
+
         priceStarter.textContent = "$5";
         priceScale.textContent = "$25";
-        
+
         // Highlight Starter
         planStarter.classList.add("featured");
         planStarter.classList.remove("disabled-plan");
         planScale.classList.remove("featured");
-      } else if (vol <= 10) {
-        // Starter level ($0.50 per million)
-        let price = Math.max(5, Math.ceil(vol * 0.50));
+      } else if (vol <= 250) {
+        // Starter level ($0.10 per million)
+        // Minimum $5 (which covers up to 50M messages)
+        let price = Math.max(5, Math.ceil(vol * 0.10));
         currentPricing.starter = price * 100;
-        
+
         priceStarter.textContent = "$" + price;
         priceScale.textContent = "$25"; // default minimum for scale
-        
-        // Highlight Starter, disable Sale if not applicable
+
+        // Highlight Starter, disable Scale if not applicable
         planStarter.classList.add("featured");
         planStarter.classList.remove("disabled-plan");
         planScale.classList.remove("featured");
-      } else if (vol <= 100) {
-        // Scale level ($0.25 per million)
-        // Disable starter
+      } else if (vol <= 1000) {
+        // Scale level ($0.05 per million)
+        // Minimum $25 is passed naturally at 500M ($25), before this point $25 is the floor
+        let price = Math.max(25, Math.ceil(vol * 0.05));
+        currentPricing.scale = price * 100;
+
+        // Disable starter visually
         planStarter.classList.remove("featured");
         planStarter.classList.add("disabled-plan");
-        
-        let price = Math.max(25, Math.ceil(vol * 0.25));
-        currentPricing.scale = price * 100;
-        
+
         priceStarter.textContent = "$5"; // Reset visual
         priceScale.textContent = "$" + price;
-        
+
         // Highlight Scale
         planScale.classList.add("featured");
         planScale.classList.remove("disabled-plan");
-      }
-      
-      // If Enterprise/100M+
-      if (vol === 100) {
-        planScale.classList.remove("featured");
-        // Could highlight enterprise here
       }
     }
 
@@ -487,21 +483,19 @@
       } else if (planType === 'scale') {
         priceInCents = currentPricing.scale;
       }
-      
+
       // Redirect to checkout with dynamic price and volume
       window.location.href = `/checkout?plan=${planType}&price=${priceInCents}&vol=${currentPricing.volume}`;
     }
 
     function selectPlan(plan, price) {
       if (plan === 'free') {
-        // Free plan - no signup required, redirect to app with free plan parameter
         window.location.href = '/?plan=free';
       }
-      // Paid plan routing replaced by selectPaidPlan
     }
-    
+
     // Initialize pricing on load
-    calculatePricing(1);
+    calculatePricing(10);
   </script>
 </body>
 
