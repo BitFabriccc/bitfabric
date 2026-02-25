@@ -1240,7 +1240,7 @@ if (isFreeTier.value && !userEmail.value) {
 }
 
 .main-logo {
-  height: clamp(80px, 15vh, 160px);
+  height: 120px;
   width: auto;
   transition: transform 0.3s ease;
 }
