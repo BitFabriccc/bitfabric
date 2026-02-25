@@ -218,7 +218,7 @@ async function initNetwork() {
         setInterval(updateDoughnut, 5000); // 5s heartbeat doughnut update
 
         // Intercept logs / data
-        fabric.subscribe('*', (msg) => {
+        const trackMessage = (msg) => {
             totalMessages++;
             totalBytes += JSON.stringify(msg).length;
             currentSecSubs++;
@@ -227,6 +227,7 @@ async function initNetwork() {
             if (msg.from) seenPeers.add(msg.from);
 
             recentActivity.unshift({
+                // Treat incoming messages from other peers as publishes to the network if needed, but display them as received
                 type: 'SUBSCRIBE',
                 topic: msg.topic || 'Unknown',
                 from: msg.from || 'System',
@@ -236,7 +237,7 @@ async function initNetwork() {
             if (recentActivity.length > MAX_ACTIVITY) recentActivity.pop();
             renderTable();
             updateStatsUI();
-        });
+        };
 
         // Patch publish to track stats
         const origPublish = fabric.publish.bind(fabric);
@@ -261,9 +262,9 @@ async function initNetwork() {
         };
 
         // Subscribe to common global topics to seed metrics
-        fabric.subscribe('bitfabric-global-tier', () => { });
-        fabric.subscribe('general-support', () => { });
-        fabric.subscribe('events', () => { });
+        fabric.subscribe('bitfabric-global-tier', trackMessage);
+        fabric.subscribe('general-support', trackMessage);
+        fabric.subscribe('events', trackMessage);
 
     } catch (err) {
         elFeedStatus.textContent = 'Connection Failed';
