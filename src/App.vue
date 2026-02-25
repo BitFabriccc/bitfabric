@@ -4,32 +4,15 @@
     <div class="app-shell">
       <section class="hero">
         <div class="logo-container">
-          <svg width="420" height="220" viewBox="0 0 420 220" xmlns="http://www.w3.org/2000/svg" class="main-logo">
-            <g transform="translate(210, 110)">
-              <!-- Outer indigo border -->
-              <ellipse cx="0" cy="0" rx="195" ry="95" fill="#4e5cc4" />
-              <!-- White middle border -->
-              <ellipse cx="0" cy="0" rx="188" ry="88" fill="white" />
-              <!-- Main green oval (Site accent) -->
-              <ellipse cx="0" cy="0" rx="180" ry="80" fill="#1ed2af" />
-              
-              <!-- "BIT" Text - Shifted LEFT and DOWN (y="16") for perfect border contact -->
-              <text 
-                x="-15" 
-                y="16"
-                font-family="'Space Grotesk', sans-serif" 
-                font-size="155" 
-                font-weight="700" 
-                fill="white" 
-                stroke="white"
-                stroke-width="6"
-                paint-order="stroke fill"
-                text-anchor="middle"
-                dominant-baseline="middle"
-                style="font-style: italic; letter-spacing: -4px;"
-                transform="skewX(-5)"
-              >BIT</text>
-            </g>
+          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="main-logo" style="margin-bottom: 20px;">
+              <path d="M12 2L2 7L12 12M12 2L22 7L12 12M12 2V12M2 7V17L12 22M12 12V22M22 7V17L12 22"
+                  stroke="url(#paint0_linear)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <defs>
+                  <linearGradient id="paint0_linear" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#818cf8" />
+                      <stop offset="1" stop-color="#f472b6" />
+                  </linearGradient>
+              </defs>
           </svg>
         </div>
         <div class="badge">Real-Time Messaging</div>
@@ -112,6 +95,10 @@
               <div style="margin-top: 10px; border-top: 1px solid rgba(229, 62, 62, 0.2); padding-top: 10px; text-align: right;">
                 <button class="btn-ghost btn-sm" style="color: #fc8181; font-size: 12px; padding: 4px 8px;" @click="confirmCancelBurst = true">Cancel Add-on (Prorate Refund)</button>
               </div>
+            </div>
+
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;">
+                <a href="/analytics.html" target="_blank" class="btn-outline btn-sm" style="width:100%; display:block; text-decoration: none;">View Usage Analytics ↗</a>
             </div>
 
             <div v-if="confirmCancelBurst" style="margin-top: 12px; padding: 12px; border-radius: 8px; background: #fff5f5; border: 1px solid #fed7d7;">
@@ -1248,12 +1235,13 @@ if (isFreeTier.value && !userEmail.value) {
   margin-bottom: 1.5rem;
   display: flex;
   justify-content: center;
+  filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.4));
+  -webkit-filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.4));
 }
 
 .main-logo {
   height: clamp(80px, 15vh, 160px);
   width: auto;
-  filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.4));
   transition: transform 0.3s ease;
 }
 

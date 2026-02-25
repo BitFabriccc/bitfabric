@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - BitFabric</title>
+    <!-- Use Inter font for a modern look -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f111a;
+            --bg-card: rgba(26, 29, 41, 0.7);
+            --bg-card-hover: rgba(36, 40, 56, 0.9);
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --secondary: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --glass-blur: blur(12px);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            background: rgba(15, 17, 26, 0.7);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar .logo {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar .back-link {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .navbar .back-link:hover {
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 40px auto;
+            padding: 0 40px;
+        }
+
+        .header-section {
+            margin-bottom: 40px;
+        }
+
+        .header-section h1 {
+            font-size: 32px;
+            margin: 0 0 8px 0;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-section p {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3), 0 0 20px var(--primary-glow);
+            background: var(--bg-card-hover);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-title {
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .stat-trend {
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        .stat-trend.down {
+            background: rgba(244, 63, 94, 0.1);
+            color: #f43f5e;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .chart-actions select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .chart-actions select:hover {
+            border-color: var(--text-muted);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .doughnut-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Activity Table */
+        .activity-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-info {
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+        }
+
+        .key-mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: #a5b4fc;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 0 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <a href="/" class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L2 7L12 12M12 2L22 7L12 12M12 2V12M2 7V17L12 22M12 12V22M22 7V17L12 22"
+                    stroke="url(#paint0_linear)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <defs>
+                    <linearGradient id="paint0_linear" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#818cf8" />
+                        <stop offset="1" stop-color="#f472b6" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            BitFabric
+        </a>
+        <a href="/" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back to Dashboard
+        </a>
+    </nav>
+
+    <div class="container">
+        <div class="header-section">
+            <h1>Usage Analytics</h1>
+            <p>Monitor your globally distributed messaging infrastructure in real-time.</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                    </svg>
+                    Total Messages (30d)
+                </div>
+                <div class="stat-value">1.42M</div>
+                <div class="stat-trend">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 6l-9.5 9.5-5-5L1 18M23 6h-6M23 6v6" />
+                    </svg>
+                    +24.5%
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <path
+                            d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                    </svg>
+                    Bandwidth Used
+                </div>
+                <div class="stat-value">42.8 GB</div>
+                <div class="stat-trend">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 6l-9.5 9.5-5-5L1 18M23 6h-6M23 6v6" />
+                    </svg>
+                    +12.1%
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    Active API Keys
+                </div>
+                <div class="stat-value">12 / &infin;</div>
+                <div class="stat-trend"
+                    style="margin-left:8px; background: rgba(99, 102, 241, 0.1); color: var(--primary);">
+                    Scale Plan
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                    </svg>
+                    Avg. Delivery Time
+                </div>
+                <div class="stat-value">24ms</div>
+                <div class="stat-trend">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 18l-9.5-9.5-5 5L1 6M23 18h-6M23 18v-6" />
+                    </svg>
+                    -4.2%
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Volume Overview</h3>
+                    <div class="chart-actions">
+                        <select>
+                            <option>Last 7 Days</option>
+                            <option selected>Last 30 Days</option>
+                            <option>This Year</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Usage by Key</h3>
+                </div>
+                <div class="doughnut-container">
+                    <canvas id="doughnutChart"></canvas>
+                </div>
+                <div style="text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted);">
+                    Production Key drives 65% of traffic
+                </div>
+            </div>
+        </div>
+
+        <div class="activity-card">
+            <div class="chart-header">
+                <h3>Recent API Activity (Sample)</h3>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Topic</th>
+                            <th>API Key Snippet</th>
+                            <th>Timestamp</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-success">PUBLISH</span></td>
+                            <td><code>trade.buy.btc</code></td>
+                            <td><span class="key-mono">prod_9x2...</span></td>
+                            <td class="key-mono">Just now</td>
+                            <td><span style="color:#10b981;">●</span> Delivered</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-info">SUBSCRIBE</span></td>
+                            <td><code>sys.logs.backend</code></td>
+                            <td><span class="key-mono">dev_8b1...</span></td>
+                            <td class="key-mono">2 mins ago</td>
+                            <td><span style="color:#10b981;">●</span> Active</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-success">PUBLISH</span></td>
+                            <td><code>user.signup</code></td>
+                            <td><span class="key-mono">prod_9x2...</span></td>
+                            <td class="key-mono">5 mins ago</td>
+                            <td><span style="color:#10b981;">●</span> Delivered</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-info">SUBSCRIBE</span></td>
+                            <td><code>market.ticker</code></td>
+                            <td><span class="key-mono">staging_4k...</span></td>
+                            <td class="key-mono">15 mins ago</td>
+                            <td><span style="color:#10b981;">●</span> Active</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart Defaults
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        // ------------------
+        // Main Line Chart
+        // ------------------
+        const ctxMain = document.getElementById('mainChart').getContext('2d');
+
+        // Create gradients
+        const gradientPub = ctxMain.createLinearGradient(0, 0, 0, 400);
+        gradientPub.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
+        gradientPub.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+        const gradientSub = ctxMain.createLinearGradient(0, 0, 0, 400);
+        gradientSub.addColorStop(0, 'rgba(236, 72, 153, 0.5)');
+        gradientSub.addColorStop(1, 'rgba(236, 72, 153, 0.0)');
+
+        // Generate synthetic sparse data for 30 days
+        const labels = Array.from({ length: 30 }, (_, i) => `Oct ${i + 1}`);
+        const dataPub = labels.map(() => Math.floor(Math.random() * 50000) + 10000);
+        const dataSub = dataPub.map(v => Math.floor(v * (Math.random() * 0.4 + 1.2))); // Subs usually higher than pubs
+
+        new Chart(ctxMain, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Messages Published',
+                        data: dataPub,
+                        borderColor: '#6366f1',
+                        backgroundColor: gradientPub,
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Messages Delivered',
+                        data: dataSub,
+                        borderColor: '#ec4899',
+                        backgroundColor: gradientSub,
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        align: 'end',
+                        labels: { boxWidth: 10, usePointStyle: true }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(15, 17, 26, 0.9)',
+                        titleColor: '#fff',
+                        bodyColor: '#a5b4fc',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 10
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { maxTicksLimit: 7 }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                        beginAtZero: true
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+
+        // ------------------
+        // Doughnut Chart
+        // ------------------
+        const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
+        new Chart(ctxDoughnut, {
+            type: 'doughnut',
+            data: {
+                labels: ['Production', 'Staging', 'Dev Local'],
+                datasets: [{
+                    data: [65, 25, 10],
+                    backgroundColor: [
+                        '#6366f1',
+                        '#ec4899',
+                        '#8b5cf6'
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 20, usePointStyle: true, boxWidth: 10 }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
