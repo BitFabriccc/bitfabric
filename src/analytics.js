@@ -62,7 +62,7 @@ function renderTable() {
             <td><code>${msg.topic}</code></td>
             <td><span class="key-mono">${msg.from.startsWith('Global-') ? msg.from : 'Global-' + msg.from.slice(0, 4)}...</span></td>
             <td class="key-mono">${new Date(msg.timestamp).toLocaleTimeString()}</td>
-            <td><span style="color:#10b981;">●</span> ${msg.type === 'PUBLISH' ? 'Delivered' : 'Ack'}</td>
+            <td><span style="color:#10b981;">●</span> ${msg.type === 'PUBLISH' ? 'Delivered' : 'Received'}</td>
         </tr>
     `).join('');
 }
@@ -126,10 +126,10 @@ const mainChart = new Chart(ctxMain, {
             }
         },
         scales: {
-            x: { grid: { display: false, drawBorder: false }, ticks: { maxTicksLimit: 7 } },
+            x: { grid: { display: false, drawBorder: false }, ticks: { maxTicksLimit: 7, maxRotation: 0 } },
             y: { grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false }, beginAtZero: true }
         },
-        animation: { duration: 0 } // Disable animation for live streaming
+        animation: { duration: 400 } // Enable smooth animation for historical loads
     }
 });
 
@@ -210,10 +210,25 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
     const fabric = new PubSubFabric(config);
     globalFabric = fabric;
 
+
     try {
         await fabric.init();
-        elFeedStatus.textContent = 'Live';
-        elFeedStatus.style.color = '#10b981';
+        if (!sinceTimestamp) {
+            elFeedStatus.textContent = 'Live';
+            elFeedStatus.style.color = '#10b981';
+            mainChart.data.labels = timeSeriesLabels; // Reset to 30s labels
+        } else {
+            elFeedStatus.textContent = `Historical: ${new Date(sinceTimestamp).toLocaleDateString()}`;
+            elFeedStatus.style.color = '#6366f1';
+
+            // Re-scale the chart labels to represent 24 hours (30 blocks = ~48 min each)
+            mainChart.data.labels = Array.from({ length: 30 }, (_, i) => {
+                const step = 86400000 / 30;
+                const d = new Date(sinceTimestamp + (i * step));
+                return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+            });
+            mainChart.update();
+        }
 
         const peerId = fabric.getPeerId() || 'Unknown';
         seenPeers.add(peerId);
@@ -223,16 +238,18 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
         let currentSecSubs = 0;
 
         trafficInterval = setInterval(() => {
-            // Shift data
-            pubData.shift();
-            pubData.push(currentSecPubs);
-            subData.shift();
-            subData.push(currentSecSubs);
+            if (!sinceTimestamp) {
+                // Shift data only if we are live watching
+                pubData.shift();
+                pubData.push(currentSecPubs);
+                subData.shift();
+                subData.push(currentSecSubs);
 
-            currentSecPubs = 0;
-            currentSecSubs = 0;
+                currentSecPubs = 0;
+                currentSecSubs = 0;
 
-            mainChart.update();
+                mainChart.update();
+            }
             updateStatsUI();
             renderTable(); // Update relative timestamps
         }, 1000);
@@ -254,11 +271,24 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
 
             // Only spike the live line chart if this is a real-time event (within last 30s)
             const isLive = (Date.now() - (msg.timestamp || Date.now())) < 30000;
-            if (isLive) currentSecSubs++;
+            if (!sinceTimestamp && isLive) {
+                currentSecSubs++;
+            } else if (sinceTimestamp) {
+                // Bucket into the correct time slot for the historical day
+                const bucketSpan = 86400000 / 30;
+                const offset = msg.timestamp - sinceTimestamp;
+                const bucketIdx = Math.max(0, Math.min(29, Math.floor(offset / bucketSpan)));
+                if (!isNaN(bucketIdx)) {
+                    subData[bucketIdx]++;
+                    mainChart.update();
+                }
+            }
+
+            const msgType = msg.from === peerId ? 'PUBLISH' : 'RECEIVE';
 
             recentActivity.unshift({
-                // Treat incoming messages from other peers as publishes to the network
-                type: msg.from === peerId ? 'SUBSCRIBE' : 'PUBLISH',
+                // Treat incoming messages from other peers as RECEIVE network traffic
+                type: msgType,
                 topic: msg.topic || 'Unknown',
                 from: msg.from || 'System',
                 timestamp: msg.timestamp || Date.now()
