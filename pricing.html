@@ -369,6 +369,24 @@
         </ul>
         <button onclick="window.location.href='mailto:sales@bitfabric.cc'">Contact Sales</button>
       </div>
+
+      <!-- Burst Relay Plan -->
+      <div class="plan" id="planBurst">
+        <div class="badge" style="background: #e53e3e;">NEW</div>
+        <div class="plan-name">Burst Relay</div>
+        <p class="plan-desc">Dedicated nano VPS Nostr relay</p>
+        <div class="price" id="priceBurst">$15</div>
+        <p class="billing">per month</p>
+        <ul class="features">
+          <li>Auto-deploys in seconds</li>
+          <li>Dedicated EC2 instance</li>
+          <li>Unmetered messages</li>
+          <li>Private relay URL</li>
+          <li>Docker powered</li>
+          <li>Bypass rate limits</li>
+        </ul>
+        <button id="btnBurst" style="background: #e53e3e;" onclick="selectPaidPlan('burst')">Deploy Relay</button>
+      </div>
     </div>
 
     <div class="faq">
@@ -403,6 +421,7 @@
     let currentPricing = {
       starter: 500, // min $5
       scale: 2500, // min $25
+      burst: 1500, // min $15
       volume: 10
     };
 
@@ -482,6 +501,8 @@
         priceInCents = currentPricing.starter;
       } else if (planType === 'scale') {
         priceInCents = currentPricing.scale;
+      } else if (planType === 'burst') {
+        priceInCents = currentPricing.burst;
       }
 
       // Redirect to checkout with dynamic price and volume

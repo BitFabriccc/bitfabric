@@ -437,6 +437,16 @@ export class PubSubTransport {
   }
 
   /**
+   * Dynamically add a custom relay post-initialization (e.g. Dedicated Burst Relay)
+   */
+  async addRelay(relayUrl) {
+    if (!relayUrl || this.nostrRelays.includes(relayUrl)) return;
+    this.nostrRelays.push(relayUrl);
+    // Boot the relay connection immediately
+    await this.initNostrRelay(relayUrl).catch(e => console.warn('Failed integrating custom relay:', e));
+  }
+
+  /**
    * Get stats
    */
   getStats() {

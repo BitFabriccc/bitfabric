@@ -90,6 +90,43 @@
           <div v-else class="account-info">
             <p><strong>Plan:</strong> {{ (userPlan || 'Starter').toUpperCase() }}</p>
             <p v-if="userEmail"><strong>Email:</strong> {{ userEmail }}</p>
+
+            <div v-if="userPlan === 'burst'" style="margin-top: 12px; padding: 12px; border-radius: 8px; background: rgba(229, 62, 62, 0.1); border: 1px solid rgba(229, 62, 62, 0.3);">
+              <h4 style="margin: 0 0 8px 0; color: #fc8181; font-size: 14px;">Burst Relay Status</h4>
+              <div v-if="relayState === 'provisioning'" style="font-size: 13px; color: #fbd38d;">
+                <span style="display:inline-block; animation: pulse 1.5s infinite;">⏳</span> Provisioning your dedicated Nostr relay...
+              </div>
+              <div v-else-if="relayState === 'active'" style="font-size: 13px;">
+                <div style="color: #68d391; margin-bottom: 6px;">✓ Active and ready</div>
+                <div style="font-family: monospace; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 4px; word-break: break-all;">
+                  {{ relayUrl }}
+                </div>
+              </div>
+              <div v-else-if="relayState === 'failed'" style="font-size: 13px; color: #fc8181;">
+                Failed to provision. Please contact support.
+              </div>
+              <div v-else style="font-size: 13px; color: var(--text-muted);">
+                Initializing...
+              </div>
+              
+              <div style="margin-top: 10px; border-top: 1px solid rgba(229, 62, 62, 0.2); padding-top: 10px; text-align: right;">
+                <button class="btn-ghost btn-sm" style="color: #fc8181; font-size: 12px; padding: 4px 8px;" @click="confirmCancelBurst = true">Cancel Add-on (Prorate Refund)</button>
+              </div>
+            </div>
+
+            <div v-if="confirmCancelBurst" style="margin-top: 12px; padding: 12px; border-radius: 8px; background: #fff5f5; border: 1px solid #fed7d7;">
+              <h4 style="margin: 0 0 8px 0; color: #c53030; font-size: 14px;">Confirm Cancellation</h4>
+              <p style="font-size: 13px; color: #742a2a; margin-bottom: 10px; line-height: 1.4;">
+                This will immediately terminate your dedicated AWS relay. Any unused time will be credited to your account balance for future invoices. Your plan will reset to Starter.
+              </p>
+              <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button class="btn-ghost btn-sm" @click="confirmCancelBurst = false">Keep Relay</button>
+                <button class="btn-primary btn-sm" style="background: #e53e3e;" @click="executeCancelBurst" :disabled="isCanceling">
+                  {{ isCanceling ? 'Canceling...' : 'Confirm Cancel' }}
+                </button>
+              </div>
+            </div>
+
             <button class="btn-ghost" @click="logout" style="margin-top: 12px; width: 100%; border: 1px solid #ff6b6b; color: #ff6b6b;">
               Switch Session / Logout
             </button>
@@ -349,6 +386,11 @@ const userPlan = ref('free');
 const newKeyName = ref('');
 const newKeyDescription = ref('');
 const apiKeys = ref([]);
+const relayState = ref('idle');
+const relayUrl = ref('');
+const relayPollInterval = ref(null);
+const confirmCancelBurst = ref(false);
+const isCanceling = ref(false);
 
 // Validation & Forum State
 const isValidated = ref(false);
@@ -440,8 +482,85 @@ async function initializeFromStorage() {
     } catch (error) {
       if (authData.defaultKey) apiKeys.value = [authData.defaultKey];
     }
+    
+    if (authData.plan === 'burst') {
+       startRelayPolling(authData.email);
+    }
   } catch (error) {
     // If auth fails, keep user signed out
+  }
+}
+
+async function startRelayPolling(email) {
+  if (relayPollInterval.value) clearInterval(relayPollInterval.value);
+  
+  const checkRelay = async () => {
+    try {
+      const resp = await fetch(`/api/get-relay?email=${encodeURIComponent(email)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.hasRelay && data.relay) {
+           relayState.value = data.relay.status;
+           if (data.relay.status === 'active' && data.relay.relay_url) {
+             relayUrl.value = data.relay.relay_url;
+             // Stop polling once active or failed
+             clearInterval(relayPollInterval.value);
+             // Connect to the new relay if not already added to the fabric
+             if (fabric && !nostrRelays.includes(relayUrl.value)) {
+               nostrRelays.push(relayUrl.value);
+               // Reconnect seamlessly with new relay list
+               pushLog('Burst Relay active! Adding to peer distribution list.');
+               fabric.addRelay(relayUrl.value); 
+             }
+           } else if (data.relay.status === 'failed') {
+             clearInterval(relayPollInterval.value);
+           }
+        }
+      }
+    } catch(e) { console.error('Relay poll failed:', e); }
+  };
+  
+  await checkRelay();
+  if (relayState.value === 'provisioning') {
+    relayPollInterval.value = setInterval(checkRelay, 5000); // Check every 5s while provisioning
+  }
+}
+
+async function executeCancelBurst() {
+  if (isCanceling.value) return;
+  isCanceling.value = true;
+  pushLog('Initiating Burst Relay cancellation...');
+  
+  try {
+    const response = await fetch('/api/cancel-burst', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail.value })
+    });
+    
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      pushLog(`Cancel failed: ${errData.error || 'Unknown error'}`);
+      isCanceling.value = false;
+      return;
+    }
+    
+    pushLog('Burst Relay canceled. Account has been prorated.');
+    
+    // Reset local state
+    confirmCancelBurst.value = false;
+    userPlan.value = 'starter';
+    relayState.value = 'idle';
+    if (relayPollInterval.value) clearInterval(relayPollInterval.value);
+    
+    // Disconnect the fabric and let the user reconnect if they want without the premium relay
+    await disconnect();
+    
+    alert('Your dedicated relay has been terminated and the plan prorated. You have been disconnected. Please reconnect manually.');
+  } catch (err) {
+    pushLog(`Cancel error: ${err.message}`);
+  } finally {
+    isCanceling.value = false;
   }
 }
 
@@ -1099,6 +1218,10 @@ function logout() {
   
   // Disconnect
   disconnect();
+  
+  if (relayPollInterval.value) clearInterval(relayPollInterval.value);
+  relayState.value = 'idle';
+  relayUrl.value = '';
   
   pushLog('Logged out');
 }

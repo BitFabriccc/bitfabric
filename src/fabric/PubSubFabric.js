@@ -128,6 +128,15 @@ export class PubSubFabric {
   }
 
   /**
+   * Inject a new relay source
+   */
+  async addRelay(relayUrl) {
+    if (this.transport && typeof this.transport.addRelay === 'function') {
+      await this.transport.addRelay(relayUrl);
+    }
+  }
+
+  /**
    * Get fabric stats
    */
   getStats() {
