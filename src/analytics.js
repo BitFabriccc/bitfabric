@@ -15,8 +15,12 @@ const seenMessageIds = new Set();
 let recentActivity = [];
 const MAX_ACTIVITY = 10;
 
-// Time series data (last 30 seconds)
-const timeSeriesLabels = Array.from({ length: 30 }, (_, i) => `${30 - i}s ago`).reverse();
+// Time series data (last 5 minutes)
+const timeSeriesLabels = Array.from({ length: 30 }, (_, i) => {
+    const secs = (30 - i) * 10;
+    if (secs >= 60) return `${Math.floor(secs / 60)}m ${secs % 60}s ago`;
+    return `${secs}s ago`;
+}).reverse();
 const pubData = new Array(30).fill(0);
 const subData = new Array(30).fill(0);
 
@@ -86,7 +90,7 @@ const mainChart = new Chart(ctxMain, {
         labels: timeSeriesLabels,
         datasets: [
             {
-                label: 'Global Publish Events/s',
+                label: 'Global Tier Network Traffic',
                 data: pubData,
                 borderColor: '#6366f1',
                 backgroundColor: gradientPub,
@@ -97,7 +101,7 @@ const mainChart = new Chart(ctxMain, {
                 pointHoverRadius: 6
             },
             {
-                label: 'Global Subscribe Events/s',
+                label: 'Other Topics Traffic',
                 data: subData,
                 borderColor: '#ec4899',
                 backgroundColor: gradientSub,
@@ -233,25 +237,23 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
         const peerId = fabric.getPeerId() || 'Unknown';
         seenPeers.add(peerId);
 
-        // Track per-second traffic
-        let currentSecPubs = 0;
-        let currentSecSubs = 0;
-
         trafficInterval = setInterval(() => {
             if (!sinceTimestamp) {
                 // Shift data only if we are live watching
                 pubData.shift();
-                pubData.push(currentSecPubs);
+                pubData.push(0);
                 subData.shift();
-                subData.push(currentSecSubs);
-
-                currentSecPubs = 0;
-                currentSecSubs = 0;
+                subData.push(0);
 
                 mainChart.update();
             }
             updateStatsUI();
             renderTable(); // Update relative timestamps
+        }, 10000); // 10-second ticks for the 5-minute rolling window
+
+        // Update relative times in the table more frequently
+        setInterval(() => {
+            if (!sinceTimestamp) renderTable();
         }, 1000);
 
         doughnutInterval = setInterval(updateDoughnut, 5000); // 5s heartbeat doughnut update
@@ -269,17 +271,27 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
             if (msg.topic) activeTopics.add(msg.topic);
             if (msg.from) seenPeers.add(msg.from);
 
-            // Only spike the live line chart if this is a real-time event (within last 30s)
-            const isLive = (Date.now() - (msg.timestamp || Date.now())) < 30000;
-            if (!sinceTimestamp && isLive) {
-                currentSecSubs++;
-            } else if (sinceTimestamp) {
+            const isGlobal = msg.topic === 'bitfabric-global-tier';
+
+            if (!sinceTimestamp) {
+                // Live mode plotting: 30 buckets covering 5 minutes (10s each)
+                const ageMs = Date.now() - (msg.timestamp || Date.now());
+                if (ageMs < 30 * 10000) {
+                    const bucketIdx = 29 - Math.floor(ageMs / 10000);
+                    if (bucketIdx >= 0 && bucketIdx <= 29) {
+                        if (isGlobal) pubData[bucketIdx]++;
+                        else subData[bucketIdx]++;
+                        mainChart.update();
+                    }
+                }
+            } else {
                 // Bucket into the correct time slot for the historical day
                 const bucketSpan = 86400000 / 30;
                 const offset = msg.timestamp - sinceTimestamp;
                 const bucketIdx = Math.max(0, Math.min(29, Math.floor(offset / bucketSpan)));
                 if (!isNaN(bucketIdx)) {
-                    subData[bucketIdx]++;
+                    if (isGlobal) pubData[bucketIdx]++;
+                    else subData[bucketIdx]++;
                     mainChart.update();
                 }
             }
