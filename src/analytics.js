@@ -11,7 +11,8 @@ let totalMessages = 0;
 let totalBytes = 0;
 let activeTopics = new Set();
 let seenPeers = new Set();
-const recentActivity = [];
+const seenMessageIds = new Set();
+let recentActivity = [];
 const MAX_ACTIVITY = 10;
 
 // Time series data (last 30 seconds)
@@ -240,12 +241,20 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
 
         // Intercept logs / data
         const trackMessage = (msg) => {
+            // Deduplicate across relays
+            const msgId = msg.messageId || `${msg.from}-${msg.topic}-${msg.timestamp}`;
+            if (seenMessageIds.has(msgId)) return;
+            seenMessageIds.add(msgId);
+
             totalMessages++;
             totalBytes += JSON.stringify(msg).length;
-            currentSecSubs++;
 
             if (msg.topic) activeTopics.add(msg.topic);
             if (msg.from) seenPeers.add(msg.from);
+
+            // Only spike the live line chart if this is a real-time event (within last 30s)
+            const isLive = (Date.now() - (msg.timestamp || Date.now())) < 30000;
+            if (isLive) currentSecSubs++;
 
             recentActivity.unshift({
                 // Treat incoming messages from other peers as publishes to the network
@@ -255,7 +264,12 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
                 timestamp: msg.timestamp || Date.now()
             });
 
-            if (recentActivity.length > MAX_ACTIVITY) recentActivity.pop();
+            // Keep table sorted chronologically descending
+            recentActivity.sort((a, b) => b.timestamp - a.timestamp);
+            if (recentActivity.length > MAX_ACTIVITY) {
+                recentActivity = recentActivity.slice(0, MAX_ACTIVITY);
+            }
+
             renderTable();
             updateStatsUI();
         };
@@ -275,7 +289,12 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
                 timestamp: Date.now()
             });
 
-            if (recentActivity.length > MAX_ACTIVITY) recentActivity.pop();
+            // Keep table sorted chronologically descending
+            recentActivity.sort((a, b) => b.timestamp - a.timestamp);
+            if (recentActivity.length > MAX_ACTIVITY) {
+                recentActivity = recentActivity.slice(0, MAX_ACTIVITY);
+            }
+
             renderTable();
             updateStatsUI();
 
@@ -315,7 +334,8 @@ elHistoryDate.addEventListener('change', async (e) => {
     totalBytes = 0;
     activeTopics.clear();
     seenPeers.clear();
-    recentActivity.length = 0;
+    seenMessageIds.clear();
+    recentActivity = [];
     pubData.fill(0);
     subData.fill(0);
     mainChart.update();
