@@ -406,10 +406,10 @@
                     </svg>
                     Active API Keys
                 </div>
-                <div class="stat-value">12 / &infin;</div>
+                <div class="stat-value">1 / &infin;</div>
                 <div class="stat-trend"
                     style="margin-left:8px; background: rgba(99, 102, 241, 0.1); color: var(--primary);">
-                    Scale Plan
+                    Global Tier
                 </div>
             </div>
 
@@ -455,7 +455,7 @@
                     <canvas id="doughnutChart"></canvas>
                 </div>
                 <div style="text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted);">
-                    Production Key drives 65% of traffic
+                    Global Tier drives 85% of traffic
                 </div>
             </div>
         </div>
@@ -478,29 +478,29 @@
                     <tbody>
                         <tr>
                             <td><span class="badge badge-success">PUBLISH</span></td>
-                            <td><code>trade.buy.btc</code></td>
-                            <td><span class="key-mono">prod_9x2...</span></td>
+                            <td><code>general-support</code></td>
+                            <td><span class="key-mono">Global-A7x...</span></td>
                             <td class="key-mono">Just now</td>
                             <td><span style="color:#10b981;">●</span> Delivered</td>
                         </tr>
                         <tr>
                             <td><span class="badge badge-info">SUBSCRIBE</span></td>
-                            <td><code>sys.logs.backend</code></td>
-                            <td><span class="key-mono">dev_8b1...</span></td>
+                            <td><code>bitfabric-global...</code></td>
+                            <td><span class="key-mono">Global-B2c...</span></td>
                             <td class="key-mono">2 mins ago</td>
                             <td><span style="color:#10b981;">●</span> Active</td>
                         </tr>
                         <tr>
                             <td><span class="badge badge-success">PUBLISH</span></td>
-                            <td><code>user.signup</code></td>
-                            <td><span class="key-mono">prod_9x2...</span></td>
+                            <td><code>events</code></td>
+                            <td><span class="key-mono">Global-F4z...</span></td>
                             <td class="key-mono">5 mins ago</td>
                             <td><span style="color:#10b981;">●</span> Delivered</td>
                         </tr>
                         <tr>
                             <td><span class="badge badge-info">SUBSCRIBE</span></td>
-                            <td><code>market.ticker</code></td>
-                            <td><span class="key-mono">staging_4k...</span></td>
+                            <td><code>bitfabric-global...</code></td>
+                            <td><span class="key-mono">Global-A7x...</span></td>
                             <td class="key-mono">15 mins ago</td>
                             <td><span style="color:#10b981;">●</span> Active</td>
                         </tr>
@@ -608,9 +608,9 @@
         new Chart(ctxDoughnut, {
             type: 'doughnut',
             data: {
-                labels: ['Production', 'Staging', 'Dev Local'],
+                labels: ['Global Tier', 'Starter', 'Pro'],
                 datasets: [{
-                    data: [65, 25, 10],
+                    data: [85, 10, 5],
                     backgroundColor: [
                         '#6366f1',
                         '#ec4899',
