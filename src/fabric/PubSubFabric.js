@@ -24,7 +24,9 @@ export class PubSubFabric {
         'wss://nostr.wine',
         'wss://relay.damus.io'
       ],
-      gunPeers: config.gunPeers || undefined
+      gunPeers: config.gunPeers || undefined,
+      since: config.since,
+      until: config.until
     });
 
     // Local subscriptions: topic -> Set<callback>

@@ -60,8 +60,8 @@ function renderTable() {
             <td><span class="badge ${msg.type === 'PUBLISH' ? 'badge-success' : 'badge-info'}">${msg.type}</span></td>
             <td><code>${msg.topic}</code></td>
             <td><span class="key-mono">${msg.from.startsWith('Global-') ? msg.from : 'Global-' + msg.from.slice(0, 4)}...</span></td>
-            <td class="key-mono">${getRelativeTime(msg.timestamp)}</td>
-            <td><span style="color:#10b981;">●</span> ${msg.type === 'PUBLISH' ? 'Sent' : 'Subscribed'}</td>
+            <td class="key-mono">${new Date(msg.timestamp).toLocaleTimeString()}</td>
+            <td><span style="color:#10b981;">●</span> ${msg.type === 'PUBLISH' ? 'Delivered' : 'Ack'}</td>
         </tr>
     `).join('');
 }
@@ -182,11 +182,32 @@ function updateDoughnut() {
 // ------------------
 // Networking Data Pipeline
 // ------------------
-async function initNetwork() {
-    elFeedStatus.textContent = 'Connecting...';
+let globalFabric = null;
+let trafficInterval = null;
+let doughnutInterval = null;
+
+async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
+    if (globalFabric) {
+        try { globalFabric.disconnect?.(); } catch (e) { }
+    }
+    if (trafficInterval) clearInterval(trafficInterval);
+    if (doughnutInterval) clearInterval(doughnutInterval);
+
+    let statusText = sinceTimestamp ? `Querying ${new Date(sinceTimestamp).toLocaleDateString()}...` : 'Connecting...';
+    elFeedStatus.textContent = statusText;
     elFeedStatus.style.color = '#f59e0b';
 
-    const fabric = new PubSubFabric({ roomId: 'bitfabric-global-tier' });
+    const config = { roomId: 'bitfabric-global-tier' };
+
+    // Inject custom history bounds into Nostr relay requests if requesting past data
+    if (sinceTimestamp && untilTimestamp) {
+        config.since = Math.floor(sinceTimestamp / 1000); // Nostr uses seconds
+        config.until = Math.floor(untilTimestamp / 1000);
+        recentActivity.length = 0; // flush for history playback
+    }
+
+    const fabric = new PubSubFabric(config);
+    globalFabric = fabric;
 
     try {
         await fabric.init();
@@ -200,7 +221,7 @@ async function initNetwork() {
         let currentSecPubs = 0;
         let currentSecSubs = 0;
 
-        setInterval(() => {
+        trafficInterval = setInterval(() => {
             // Shift data
             pubData.shift();
             pubData.push(currentSecPubs);
@@ -215,7 +236,7 @@ async function initNetwork() {
             renderTable(); // Update relative timestamps
         }, 1000);
 
-        setInterval(updateDoughnut, 5000); // 5s heartbeat doughnut update
+        doughnutInterval = setInterval(updateDoughnut, 5000); // 5s heartbeat doughnut update
 
         // Intercept logs / data
         const trackMessage = (msg) => {
@@ -227,8 +248,8 @@ async function initNetwork() {
             if (msg.from) seenPeers.add(msg.from);
 
             recentActivity.unshift({
-                // Treat incoming messages from other peers as publishes to the network if needed, but display them as received
-                type: 'SUBSCRIBE',
+                // Treat incoming messages from other peers as publishes to the network
+                type: msg.from === peerId ? 'SUBSCRIBE' : 'PUBLISH',
                 topic: msg.topic || 'Unknown',
                 from: msg.from || 'System',
                 timestamp: msg.timestamp || Date.now()
@@ -272,5 +293,37 @@ async function initNetwork() {
         console.error('Failed to initialize BitFabric Analytics:', err);
     }
 }
+
+// History Date Picker
+const elHistoryDate = document.getElementById('history-date');
+
+// Set default to today
+const today = new Date();
+elHistoryDate.value = today.toISOString().split('T')[0];
+
+elHistoryDate.addEventListener('change', async (e) => {
+    const selectedDateStr = e.target.value;
+    if (!selectedDateStr) return;
+
+    // Convert to Unix timestamps (start and end of the selected day in local time)
+    const selectedDate = new Date(selectedDateStr);
+    const startOfDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
+    const endOfDay = startOfDay + 86400000;
+
+    // Clear State
+    totalMessages = 0;
+    totalBytes = 0;
+    activeTopics.clear();
+    seenPeers.clear();
+    recentActivity.length = 0;
+    pubData.fill(0);
+    subData.fill(0);
+    mainChart.update();
+    renderTable();
+    updateStatsUI();
+
+    // Restart network with historical timeframe
+    await initNetwork(startOfDay, endOfDay);
+});
 
 initNetwork();

@@ -44,6 +44,10 @@ export class PubSubTransport {
 
     this.gunPeers = config.gunPeers || ACTIVE_GUN_RELAYS;
 
+    // History filtering configuration
+    this.since = config.since;
+    this.until = config.until;
+
     // Topic subscriptions: topic -> Set<callback>
     this.subscriptions = new Map();
 
@@ -124,6 +128,8 @@ export class PubSubTransport {
       const client = createNostrClient({
         relayUrl,
         room: this.channel,
+        since: this.since,
+        until: this.until,
         onPayload: ({ from, payload, eventId, createdAt }) => {
           this.stats.transport1.received++;
 

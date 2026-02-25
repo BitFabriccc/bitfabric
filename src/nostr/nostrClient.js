@@ -15,7 +15,7 @@ function isHex64(s) {
  * - Publishes kind:1 events tagged with ['t', room] and ['room', room]
  * - Subscribes to kind:1 events filtered by #t
  */
-export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice, onOk, storage, secretKeyHex } = {}) {
+export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice, onOk, storage, secretKeyHex, since, until } = {}) {
   if (!relayUrl) throw new Error('relayUrl is required');
   if (!room) throw new Error('room is required');
 
@@ -193,15 +193,16 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
     });
 
     // Subscribe to this room (topic-tag filtered)
-    const since = Math.floor(Date.now() / 1000) - 300; // last 5 minutes
+    const filterSince = since || Math.floor(Date.now() / 1000) - 300; // last 5 minutes if not provided
     const filter = {
       kinds: [1],
       '#t': [state.room],
-      since,
+      since: filterSince,
       limit: 50,
     };
+    if (until) filter.until = until;
 
-    console.log(`[Nostr] Subscribing to room: ${state.room} (since: ${since})`);
+    console.log(`[Nostr] Subscribing to room: ${state.room} (since: ${filterSince}, until: ${until || 'now'})`);
     sendRaw(['REQ', state.subId, filter]);
 
     setState('connected');
@@ -225,8 +226,10 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
     const filter = {
       kinds: [1],
       '#t': [topic],
-      limit: 1,
+      limit: 50,
     };
+    if (since) filter.since = since;
+    if (until) filter.until = until;
     sendRaw(['REQ', subId, filter]);
   }
 
