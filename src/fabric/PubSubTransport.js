@@ -132,6 +132,16 @@ export class PubSubTransport {
         },
         onState: (state) => {
           // Relay state changes (connecting/connected/error)
+          if (state === 'connected') {
+            // Re-subscribe to all active topics to fetch last messages
+            this.subscriptions.forEach((_, topic) => {
+              try {
+                if (typeof client.subscribeTopic === 'function') {
+                  client.subscribeTopic(topic);
+                }
+              } catch (err) { }
+            });
+          }
         }
       });
 
@@ -322,11 +332,23 @@ export class PubSubTransport {
    * Subscribe to a topic
    */
   subscribe(topic, callback) {
-    if (!this.subscriptions.has(topic)) {
+    const isNewSubscription = !this.subscriptions.has(topic);
+    if (isNewSubscription) {
       this.subscriptions.set(topic, new Set());
     }
 
     this.subscriptions.get(topic).add(callback);
+
+    if (isNewSubscription) {
+      // Ask connected Nostr relays for the last message on this topic (NIP-01)
+      this.nostrClients.forEach(client => {
+        try {
+          if (client && typeof client.subscribeTopic === 'function') {
+            client.subscribeTopic(topic);
+          }
+        } catch (err) { }
+      });
+    }
 
     // Deliver cached messages immediately if they exist for this topic
     if (this.topicCache.has(topic)) {

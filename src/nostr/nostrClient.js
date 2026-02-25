@@ -219,6 +219,17 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
     return send(payload);
   }
 
+  function subscribeTopic(topic) {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+    const subId = `sub-topic-${topic}-${Math.random().toString(36).slice(2, 8)}`;
+    const filter = {
+      kinds: [1],
+      '#t': [topic],
+      limit: 1,
+    };
+    sendRaw(['REQ', subId, filter]);
+  }
+
   function buildSignedEvent(payload) {
     ensureKeys();
     const created_at = Math.floor(Date.now() / 1000);
@@ -226,6 +237,9 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
       ['room', state.room],
       ['t', state.room],
     ];
+    if (payload.topic && payload.topic !== state.room) {
+      tags.push(['t', payload.topic]);
+    }
 
     const eventTemplate = {
       kind: 1,
@@ -288,6 +302,7 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
     send,
     publish,
     sendWithOk,
+    subscribeTopic,
     getPublicKey: getPublicKeyHex,
     getPublicKeyHex,
   };
