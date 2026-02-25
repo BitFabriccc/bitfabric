@@ -6,7 +6,7 @@ BitFabric is a direct P2P pub/sub messaging system leveraging **Gun** and **Nost
 
 - **P2P Support Forum**: A real-time, decentralized discussion board allowing users to ask questions and participate in community support.
 - **API Key Validation**: Distinguishes between validated pro-tier keys and open free-tier sessions.
-- **Strict Topic Enforcement**: Automatically maps unvalidated guest publications to the global `bitfabric-free-tier` pool to ensure network integrity.
+- **Strict Topic Enforcement**: Automatically maps unvalidated guest publications to the global `bitfabric-global-tier` pool to ensure network integrity.
 - **Real-Time Mesh**: Leverages redundant transports (Gun + Nostr) to ensure sub-second message delivery globally.
 - **History Replay**: Automatic persistence and replay of recent messages (via Gun) for seamless cross-session interactions.
 
@@ -31,7 +31,7 @@ npm run preview
 
 The application utilizes a Cloudflare D1 database for API key management:
 - **Validated Keys**: Unlock custom Room IDs and custom publication topics.
-- **Free Sessions**: Map all publications to the `bitfabric-free-tier` topic.
+- **Free Sessions**: Map all publications to the `bitfabric-global-tier` topic.
 - **Support Forum**: Operates on a shared, unvalidated namespace (`general-support`) accessible to everyone.
 
 ## Email Verification (Optional)

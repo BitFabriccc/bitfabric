@@ -124,8 +124,19 @@ export class PubSubTransport {
       const client = createNostrClient({
         relayUrl,
         room: this.channel,
-        onPayload: ({ from, payload }) => {
+        onPayload: ({ from, payload, eventId, createdAt }) => {
           this.stats.transport1.received++;
+
+          if (!payload.timestamp && createdAt) {
+            payload.timestamp = createdAt * 1000;
+          } else if (payload.timestamp && typeof payload.timestamp === 'number' && payload.timestamp < 100000000000) {
+            payload.timestamp = payload.timestamp * 1000;
+          }
+
+          if (!payload.messageId && eventId) {
+            payload.messageId = eventId;
+          }
+
           this.handleMessage('nostr', from, payload).catch(err => {
             // Silently handle message processing errors
           });

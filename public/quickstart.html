@@ -220,7 +220,7 @@
           <pre><code><span class="keyword">import</span> { PubSubFabric } <span class="keyword">from</span> <span class="string">'bitfabric'</span>;
 
 <span class="keyword">const</span> fabric = <span class="keyword">new</span> PubSubFabric({
-  roomId: <span class="string">'bitfabric-free-tier'</span>
+  roomId: <span class="string">'bitfabric-global-tier'</span>
 });
 
 <span class="keyword">await</span> fabric.<span class="function">init</span>();</code></pre>
@@ -254,7 +254,7 @@
           <li><strong>Step 3</strong>: Publish to restricted topics without mapping limits.</li>
         </ul>
         <div class="note">
-          <strong>Note:</strong> Free Tier users are automatically remapped to <code>bitfabric-free-tier</code> to
+          <strong>Note:</strong> Free Tier users are automatically remapped to <code>bitfabric-global-tier</code> to
           ensure network stability for everyone.
         </div>
       </section>

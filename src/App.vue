@@ -359,8 +359,8 @@ const accountId = ref('');
 const signInEmail = ref('');
 const signInPassword = ref('');
 // New visitors with no session are always free tier by default
-const isFreeTier = ref(sessionStorage.getItem('bitfabric-free-tier') === 'true');
-const freeTopic = 'bitfabric-free-tier';
+const isFreeTier = ref(sessionStorage.getItem('bitfabric-global-tier') === 'true');
+const freeTopic = 'bitfabric-global-tier';
 const publishTopic = ref(isFreeTier.value ? freeTopic : 'events');
 const subscribeTopic = ref(isFreeTier.value ? freeTopic : 'events');
 const messageData = ref('{"type": "test", "value": 123}');
@@ -383,7 +383,7 @@ const isCanceling = ref(false);
 const isValidated = ref(false);
 const keySourceHint = ref('Free session uses shared global topic.');
 const isForumVisible = ref(false);
-const FORUM_ROOM = 'bitfabric-free-tier';
+const FORUM_ROOM = 'bitfabric-global-tier';
 const FORUM_TOPIC = 'general-support';
 const forumInput = ref('');
 const forumFeed = ref(null);
@@ -674,7 +674,7 @@ function traceForumHistory() {
         from: msg.from,
         data: payloadData || {},
         messageId: msg.messageId,
-        receivedAt: msg.timestamp || Date.now()
+        receivedAt: msg.timestamp ? parseInt(msg.timestamp) || Date.now() : Date.now()
       });
       
       // Allow larger buffer for forum messages
@@ -1057,8 +1057,8 @@ function publish() {
           topic: message.topic || topic,
           from: message.from || 'unknown',
           data: message.data || {},
-          messageId: message.messageId || `${message.from}-${message.topic}-${Date.now()}`,
-          receivedAt: message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
+          messageId: message.messageId,
+          receivedAt: message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now()
         });
         if (messages.value.length > 50) messages.value.pop();
       });
@@ -1092,9 +1092,9 @@ function addSubscription() {
     messages.value.unshift({
       topic: message.topic || topic,
       from: message.from || 'unknown',
-      data: message.data || {},
-      messageId: message.messageId || `${message.from}-${message.topic}-${Date.now()}`,
-      receivedAt: message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
+      data: typeof message.data === 'string' ? JSON.parse(message.data) : message.data,
+      messageId: message.messageId,
+      receivedAt: message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now()
     });
     if (messages.value.length > 200) messages.value.pop();
   });
