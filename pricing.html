@@ -321,7 +321,7 @@
       <div class="plan featured" id="planStarter">
         <div class="badge">POPULAR</div>
         <div class="plan-name">Starter</div>
-        <p class="plan-desc">Up to 250M messages ($0.10/1M)</p>
+        <p class="plan-desc">Up to 50M messages ($0.10 per 1 million)</p>
         <div class="price" id="priceStarter">$5</div>
         <p class="billing">per month</p>
         <ul class="features">
@@ -338,7 +338,7 @@
       <!-- Scale Plan -->
       <div class="plan" id="planScale">
         <div class="plan-name">Scale</div>
-        <p class="plan-desc">250M+ messages ($0.05/1M)</p>
+        <p class="plan-desc">50M+ messages ($0.05 per 1 million)</p>
         <div class="price" id="priceScale">$25</div>
         <p class="billing">per month</p>
         <ul class="features">
@@ -444,7 +444,7 @@
         planStarter.classList.add("featured");
         planStarter.classList.remove("disabled-plan");
         planScale.classList.remove("featured");
-      } else if (vol <= 250) {
+      } else if (vol <= 50) {
         // Starter level ($0.10 per million)
         // Minimum $5 (which covers up to 50M messages)
         let price = Math.max(5, Math.ceil(vol * 0.10));
