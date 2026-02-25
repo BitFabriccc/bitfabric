@@ -32,7 +32,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         pricing: resolve(__dirname, 'pricing.html'),
         signup: resolve(__dirname, 'signup.html'),
-        checkout: resolve(__dirname, 'checkout.html')
+        checkout: resolve(__dirname, 'checkout.html'),
+        analytics: resolve(__dirname, 'analytics.html')
       }
     }
   }

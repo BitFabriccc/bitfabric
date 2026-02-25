@@ -367,9 +367,9 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
                     </svg>
-                    Total Messages (30d)
+                    Total Messages
                 </div>
-                <div class="stat-value">1.42M</div>
+                <div class="stat-value" id="stat-messages">0</div>
                 <div class="stat-trend">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M23 6l-9.5 9.5-5-5L1 18M23 6h-6M23 6v6" />
@@ -387,7 +387,7 @@
                     </svg>
                     Bandwidth Used
                 </div>
-                <div class="stat-value">42.8 GB</div>
+                <div class="stat-value" id="stat-bandwidth">0 B</div>
                 <div class="stat-trend">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M23 6l-9.5 9.5-5-5L1 18M23 6h-6M23 6v6" />
@@ -404,9 +404,9 @@
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
-                    Active API Keys
+                    Peers Seen
                 </div>
-                <div class="stat-value">1 / &infin;</div>
+                <div class="stat-value" id="stat-peers">0</div>
                 <div class="stat-trend"
                     style="margin-left:8px; background: rgba(99, 102, 241, 0.1); color: var(--primary);">
                     Global Tier
@@ -418,9 +418,9 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                     </svg>
-                    Avg. Delivery Time
+                    Active Topics
                 </div>
-                <div class="stat-value">24ms</div>
+                <div class="stat-value" id="stat-topics">0</div>
                 <div class="stat-trend">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M23 18l-9.5-9.5-5 5L1 6M23 18h-6M23 18v-6" />
@@ -433,206 +433,52 @@
         <div class="charts-grid">
             <div class="chart-card">
                 <div class="chart-header">
-                    <h3>Volume Overview</h3>
-                    <div class="chart-actions">
-                        <select>
-                            <option>Last 7 Days</option>
-                            <option selected>Last 30 Days</option>
-                            <option>This Year</option>
-                        </select>
-                    </div>
+                    <h3>Real-Time Live Feed (<span id="feed-status" style="color:#10b981;">Connecting...</span>)</h3>
                 </div>
-                <div class="chart-container">
-                    <canvas id="mainChart"></canvas>
-                </div>
-            </div>
 
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3>Usage by Key</h3>
-                </div>
-                <div class="doughnut-container">
-                    <canvas id="doughnutChart"></canvas>
-                </div>
-                <div style="text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted);">
-                    Global Tier drives 85% of traffic
-                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="mainChart"></canvas>
             </div>
         </div>
 
-        <div class="activity-card">
+        <div class="chart-card">
             <div class="chart-header">
-                <h3>Recent API Activity (Sample)</h3>
+                <h3>Message Distribution</h3>
             </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Action</th>
-                            <th>Topic</th>
-                            <th>API Key Snippet</th>
-                            <th>Timestamp</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="badge badge-success">PUBLISH</span></td>
-                            <td><code>general-support</code></td>
-                            <td><span class="key-mono">Global-A7x...</span></td>
-                            <td class="key-mono">Just now</td>
-                            <td><span style="color:#10b981;">●</span> Delivered</td>
-                        </tr>
-                        <tr>
-                            <td><span class="badge badge-info">SUBSCRIBE</span></td>
-                            <td><code>bitfabric-global...</code></td>
-                            <td><span class="key-mono">Global-B2c...</span></td>
-                            <td class="key-mono">2 mins ago</td>
-                            <td><span style="color:#10b981;">●</span> Active</td>
-                        </tr>
-                        <tr>
-                            <td><span class="badge badge-success">PUBLISH</span></td>
-                            <td><code>events</code></td>
-                            <td><span class="key-mono">Global-F4z...</span></td>
-                            <td class="key-mono">5 mins ago</td>
-                            <td><span style="color:#10b981;">●</span> Delivered</td>
-                        </tr>
-                        <tr>
-                            <td><span class="badge badge-info">SUBSCRIBE</span></td>
-                            <td><code>bitfabric-global...</code></td>
-                            <td><span class="key-mono">Global-A7x...</span></td>
-                            <td class="key-mono">15 mins ago</td>
-                            <td><span style="color:#10b981;">●</span> Active</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="doughnut-container">
+                <canvas id="doughnutChart"></canvas>
+            </div>
+            <div style="text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted);"
+                id="doughnut-subtext">
+                Initializing streams...
             </div>
         </div>
     </div>
 
-    <script>
-        // Chart Defaults
-        Chart.defaults.color = '#94a3b8';
-        Chart.defaults.font.family = "'Inter', sans-serif";
+    <div class="activity-card">
+        <div class="chart-header">
+            <h3>Recent API Activity (Sample)</h3>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Topic</th>
+                        <th>API Key Snippet</th>
+                        <th>Timestamp</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="activity-table-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </div>
 
-        // ------------------
-        // Main Line Chart
-        // ------------------
-        const ctxMain = document.getElementById('mainChart').getContext('2d');
-
-        // Create gradients
-        const gradientPub = ctxMain.createLinearGradient(0, 0, 0, 400);
-        gradientPub.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
-        gradientPub.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
-
-        const gradientSub = ctxMain.createLinearGradient(0, 0, 0, 400);
-        gradientSub.addColorStop(0, 'rgba(236, 72, 153, 0.5)');
-        gradientSub.addColorStop(1, 'rgba(236, 72, 153, 0.0)');
-
-        // Generate synthetic sparse data for 30 days
-        const labels = Array.from({ length: 30 }, (_, i) => `Oct ${i + 1}`);
-        const dataPub = labels.map(() => Math.floor(Math.random() * 50000) + 10000);
-        const dataSub = dataPub.map(v => Math.floor(v * (Math.random() * 0.4 + 1.2))); // Subs usually higher than pubs
-
-        new Chart(ctxMain, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Messages Published',
-                        data: dataPub,
-                        borderColor: '#6366f1',
-                        backgroundColor: gradientPub,
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 0,
-                        pointHoverRadius: 6
-                    },
-                    {
-                        label: 'Messages Delivered',
-                        data: dataSub,
-                        borderColor: '#ec4899',
-                        backgroundColor: gradientSub,
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 0,
-                        pointHoverRadius: 6
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        align: 'end',
-                        labels: { boxWidth: 10, usePointStyle: true }
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: 'rgba(15, 17, 26, 0.9)',
-                        titleColor: '#fff',
-                        bodyColor: '#a5b4fc',
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        borderWidth: 1,
-                        padding: 10
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: { display: false, drawBorder: false },
-                        ticks: { maxTicksLimit: 7 }
-                    },
-                    y: {
-                        grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
-                        beginAtZero: true
-                    }
-                },
-                interaction: {
-                    mode: 'nearest',
-                    axis: 'x',
-                    intersect: false
-                }
-            }
-        });
-
-        // ------------------
-        // Doughnut Chart
-        // ------------------
-        const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
-        new Chart(ctxDoughnut, {
-            type: 'doughnut',
-            data: {
-                labels: ['Global Tier', 'Starter', 'Pro'],
-                datasets: [{
-                    data: [85, 10, 5],
-                    backgroundColor: [
-                        '#6366f1',
-                        '#ec4899',
-                        '#8b5cf6'
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { padding: 20, usePointStyle: true, boxWidth: 10 }
-                    }
-                }
-            }
-        });
-    </script>
+    <script type="module" src="/src/analytics.js"></script>
 </body>
 
 </html>

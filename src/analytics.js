@@ -1,0 +1,275 @@
+import { PubSubFabric } from './fabric/index.js';
+import { Chart, registerables } from 'chart.js';
+
+// Register Chart.js
+Chart.register(...registerables);
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+// State
+let totalMessages = 0;
+let totalBytes = 0;
+let activeTopics = new Set();
+let seenPeers = new Set();
+const recentActivity = [];
+const MAX_ACTIVITY = 10;
+
+// Time series data (last 30 seconds)
+const timeSeriesLabels = Array.from({ length: 30 }, (_, i) => `${30 - i}s ago`).reverse();
+const pubData = new Array(30).fill(0);
+const subData = new Array(30).fill(0);
+
+// DOM Elements
+const elMessages = document.getElementById('stat-messages');
+const elBandwidth = document.getElementById('stat-bandwidth');
+const elPeers = document.getElementById('stat-peers');
+const elTopics = document.getElementById('stat-topics');
+const elFeedStatus = document.getElementById('feed-status');
+const elActivityBody = document.getElementById('activity-table-body');
+const elDoughnutSubtext = document.getElementById('doughnut-subtext');
+
+// Format Bytes
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Format relative time
+function getRelativeTime(timestamp) {
+    const diff = Date.now() - (timestamp || Date.now());
+    if (diff < 5000) return 'Just now';
+    if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
+    return `${Math.floor(diff / 60000)}m ago`;
+}
+
+// Update DOM
+function updateStatsUI() {
+    elMessages.textContent = totalMessages.toLocaleString();
+    elBandwidth.textContent = formatBytes(totalBytes);
+    elPeers.textContent = seenPeers.size.toLocaleString();
+    elTopics.textContent = activeTopics.size.toLocaleString();
+}
+
+// Render Table
+function renderTable() {
+    elActivityBody.innerHTML = recentActivity.map(msg => `
+        <tr>
+            <td><span class="badge ${msg.type === 'PUBLISH' ? 'badge-success' : 'badge-info'}">${msg.type}</span></td>
+            <td><code>${msg.topic}</code></td>
+            <td><span class="key-mono">${msg.from.startsWith('Global-') ? msg.from : 'Global-' + msg.from.slice(0, 4)}...</span></td>
+            <td class="key-mono">${getRelativeTime(msg.timestamp)}</td>
+            <td><span style="color:#10b981;">●</span> ${msg.type === 'PUBLISH' ? 'Sent' : 'Subscribed'}</td>
+        </tr>
+    `).join('');
+}
+
+// ------------------
+// Main Line Chart
+// ------------------
+const ctxMain = document.getElementById('mainChart').getContext('2d');
+
+const gradientPub = ctxMain.createLinearGradient(0, 0, 0, 400);
+gradientPub.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
+gradientPub.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+const gradientSub = ctxMain.createLinearGradient(0, 0, 0, 400);
+gradientSub.addColorStop(0, 'rgba(236, 72, 153, 0.5)');
+gradientSub.addColorStop(1, 'rgba(236, 72, 153, 0.0)');
+
+const mainChart = new Chart(ctxMain, {
+    type: 'line',
+    data: {
+        labels: timeSeriesLabels,
+        datasets: [
+            {
+                label: 'Global Publish Events/s',
+                data: pubData,
+                borderColor: '#6366f1',
+                backgroundColor: gradientPub,
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 0,
+                pointHoverRadius: 6
+            },
+            {
+                label: 'Global Subscribe Events/s',
+                data: subData,
+                borderColor: '#ec4899',
+                backgroundColor: gradientSub,
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 0,
+                pointHoverRadius: 6
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true } },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+                backgroundColor: 'rgba(15, 17, 26, 0.9)',
+                titleColor: '#fff',
+                bodyColor: '#a5b4fc',
+                borderColor: 'rgba(255,255,255,0.1)',
+                borderWidth: 1,
+                padding: 10
+            }
+        },
+        scales: {
+            x: { grid: { display: false, drawBorder: false }, ticks: { maxTicksLimit: 7 } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false }, beginAtZero: true }
+        },
+        animation: { duration: 0 } // Disable animation for live streaming
+    }
+});
+
+// ------------------
+// Doughnut Chart
+// ------------------
+const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
+const doughnutChart = new Chart(ctxDoughnut, {
+    type: 'doughnut',
+    data: {
+        labels: [],
+        datasets: [{
+            data: [],
+            backgroundColor: ['#6366f1', '#ec4899', '#8b5cf6', '#10b981', '#f59e0b'],
+            borderWidth: 0,
+            hoverOffset: 4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%',
+        plugins: {
+            legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true, boxWidth: 10 } }
+        }
+    }
+});
+
+function updateDoughnut() {
+    const topicsArr = Array.from(activeTopics);
+    // Tally up messages per topic (just a rough estimate based on recent activity, or evenly split for now if zero)
+    let topicCounts = {};
+    recentActivity.forEach(msg => {
+        topicCounts[msg.topic] = (topicCounts[msg.topic] || 0) + 1;
+    });
+
+    const sorted = Object.entries(topicCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    if (sorted.length > 0) {
+        doughnutChart.data.labels = sorted.map(s => s[0]);
+        doughnutChart.data.datasets[0].data = sorted.map(s => s[1]);
+        elDoughnutSubtext.textContent = `Tracking ${activeTopics.size} active topics in real-time`;
+    } else {
+        doughnutChart.data.labels = ['Waiting for traffic...'];
+        doughnutChart.data.datasets[0].data = [1];
+        elDoughnutSubtext.textContent = `Listening to BitFabric Global Tier...`;
+    }
+    doughnutChart.update();
+}
+
+// ------------------
+// Networking Data Pipeline
+// ------------------
+async function initNetwork() {
+    elFeedStatus.textContent = 'Connecting...';
+    elFeedStatus.style.color = '#f59e0b';
+
+    const fabric = new PubSubFabric({ roomId: 'bitfabric-global-tier' });
+
+    try {
+        await fabric.init();
+        elFeedStatus.textContent = 'Live';
+        elFeedStatus.style.color = '#10b981';
+
+        const peerId = fabric.getPeerId() || 'Unknown';
+        seenPeers.add(peerId);
+
+        // Track per-second traffic
+        let currentSecPubs = 0;
+        let currentSecSubs = 0;
+
+        setInterval(() => {
+            // Shift data
+            pubData.shift();
+            pubData.push(currentSecPubs);
+            subData.shift();
+            subData.push(currentSecSubs);
+
+            currentSecPubs = 0;
+            currentSecSubs = 0;
+
+            mainChart.update();
+            updateStatsUI();
+            renderTable(); // Update relative timestamps
+        }, 1000);
+
+        setInterval(updateDoughnut, 5000); // 5s heartbeat doughnut update
+
+        // Intercept logs / data
+        fabric.subscribe('*', (msg) => {
+            totalMessages++;
+            totalBytes += JSON.stringify(msg).length;
+            currentSecSubs++;
+
+            if (msg.topic) activeTopics.add(msg.topic);
+            if (msg.from) seenPeers.add(msg.from);
+
+            recentActivity.unshift({
+                type: 'SUBSCRIBE',
+                topic: msg.topic || 'Unknown',
+                from: msg.from || 'System',
+                timestamp: msg.timestamp || Date.now()
+            });
+
+            if (recentActivity.length > MAX_ACTIVITY) recentActivity.pop();
+            renderTable();
+            updateStatsUI();
+        });
+
+        // Patch publish to track stats
+        const origPublish = fabric.publish.bind(fabric);
+        fabric.publish = async (topic, data) => {
+            totalMessages++;
+            totalBytes += JSON.stringify(data).length;
+            currentSecPubs++;
+            activeTopics.add(topic);
+
+            recentActivity.unshift({
+                type: 'PUBLISH',
+                topic: topic,
+                from: peerId,
+                timestamp: Date.now()
+            });
+
+            if (recentActivity.length > MAX_ACTIVITY) recentActivity.pop();
+            renderTable();
+            updateStatsUI();
+
+            return origPublish(topic, data);
+        };
+
+        // Subscribe to common global topics to seed metrics
+        fabric.subscribeTopic('bitfabric-global-tier');
+        fabric.subscribeTopic('general-support');
+        fabric.subscribeTopic('events');
+
+    } catch (err) {
+        elFeedStatus.textContent = 'Connection Failed';
+        elFeedStatus.style.color = '#f43f5e';
+        console.error('Failed to initialize BitFabric Analytics:', err);
+    }
+}
+
+initNetwork();
