@@ -125,7 +125,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <h3 style="margin:0;">API Key</h3>
             <span v-if="isEmailAuthed && userPlan !== 'pro' && userPlan !== 'enterprise'" class="tag" style="background:#fef3c7;color:#92400e;border:none;">Starter</span>
-            <span v-else-if="!isEmailAuthed" class="tag">Guest</span>
+            <span v-else-if="!isEmailAuthed" class="tag">Global Tier</span>
           </div>
           
           <div v-if="!isEmailAuthed" class="manual-key-entry">
@@ -381,7 +381,7 @@ const isCanceling = ref(false);
 
 // Validation & Forum State
 const isValidated = ref(false);
-const keySourceHint = ref('Free session uses shared global topic.');
+const keySourceHint = ref('Global Tier uses shared topic.');
 const isForumVisible = ref(false);
 const FORUM_ROOM = 'bitfabric-global-tier';
 const FORUM_TOPIC = 'general-support';
@@ -554,7 +554,7 @@ async function executeCancelBurst() {
 async function validateManualKey(key) {
   if (!key.trim()) {
     isValidated.value = false;
-    keySourceHint.value = 'Free session uses shared global topic.';
+    keySourceHint.value = 'Global Tier uses shared topic.';
     return;
   }
   
@@ -600,7 +600,7 @@ function startFreeSession() {
   subscribeTopic.value = freeTopic;
   sessionStorage.setItem('bitfabric-free-tier', 'true');
   sessionStorage.setItem('bitfabric-api-key', 'bitfabric-free-tier');
-  pushLog('Started Free session (no API key required)');
+  pushLog('Started Global Tier session (no API key required)');
   connect();
 }
 
@@ -691,7 +691,7 @@ async function sendForumMessage() {
   const topic = FORUM_TOPIC;
   const displayAlias = userAlias.value.trim() || (isEmailAuthed.value 
     ? userEmail.value.split('@')[0] 
-    : `Guest-${peerId.value.slice(0, 4)}`);
+    : `Global-${peerId.value.slice(0, 4)}`);
 
   const data = {
     type: 'chat',
