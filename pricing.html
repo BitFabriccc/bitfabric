@@ -194,6 +194,90 @@
       font-size: 14px;
       line-height: 1.6;
     }
+
+    /* Calculator Styles */
+    .calculator {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 40px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    .calculator h3 {
+      font-size: 20px;
+      margin-bottom: 24px;
+      color: #1a202c;
+    }
+
+    .slider-container {
+      position: relative;
+      margin-bottom: 24px;
+      padding: 0 10px;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: #e2e8f0;
+      outline: none;
+      opacity: 0.9;
+      transition: opacity .2s;
+    }
+
+    .slider:hover {
+      opacity: 1;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #667eea;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+      border: 3px solid white;
+    }
+
+    .slider::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #667eea;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+      border: 3px solid white;
+    }
+
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 12px;
+      color: #718096;
+      font-size: 14px;
+    }
+
+    .volume-display {
+      font-size: 18px;
+      color: #4a5568;
+    }
+
+    #volumeValue {
+      font-size: 24px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .disabled-plan {
+      opacity: 0.5;
+      pointer-events: none;
+      filter: grayscale(1);
+    }
   </style>
 </head>
 
@@ -201,6 +285,21 @@
   <div class="container">
     <h1>Simple, Transparent Pricing</h1>
     <p class="subtitle">Choose the plan that fits your needs</p>
+
+    <div class="calculator">
+      <h3>Estimate your monthly usage</h3>
+      <div class="slider-container">
+        <input type="range" min="0" max="100" value="1" class="slider" id="volumeSlider">
+        <div class="slider-labels">
+          <span>0</span>
+          <span>50M</span>
+          <span>100M+</span>
+        </div>
+      </div>
+      <div class="volume-display">
+        <span id="volumeValue">1 Million</span> messages/month
+      </div>
+    </div>
 
     <div class="pricing-grid">
       <!-- Free Plan -->
@@ -219,38 +318,38 @@
       </div>
 
       <!-- Starter Plan -->
-      <div class="plan featured">
+      <div class="plan featured" id="planStarter">
         <div class="badge">POPULAR</div>
         <div class="plan-name">Starter</div>
-        <p class="plan-desc">For production apps ($0.50/1M messages)</p>
-        <div class="price">$5</div>
+        <p class="plan-desc">Up to 10M messages ($0.50/1M)</p>
+        <div class="price" id="priceStarter">$5</div>
         <p class="billing">per month</p>
         <ul class="features">
-          <li>10M messages/month</li>
+          <li>Pay per message volume</li>
           <li>5 API keys</li>
           <li>Requires email + API key</li>
           <li>Email support</li>
           <li>Advanced encryption</li>
           <li>Usage analytics</li>
         </ul>
-        <button onclick="selectPlan('starter', 500)">Subscribe Now</button>
+        <button id="btnStarter" onclick="selectPaidPlan('starter')">Subscribe Now</button>
       </div>
 
       <!-- Scale Plan -->
-      <div class="plan">
+      <div class="plan" id="planScale">
         <div class="plan-name">Scale</div>
-        <p class="plan-desc">For high-traffic projects ($0.25/1M messages)</p>
-        <div class="price">$25</div>
+        <p class="plan-desc">10M - 100M messages ($0.25/1M)</p>
+        <div class="price" id="priceScale">$25</div>
         <p class="billing">per month</p>
         <ul class="features">
-          <li>100M messages/month</li>
+          <li>Pay per message volume</li>
           <li>Unlimited API keys</li>
           <li>Requires email + API key</li>
           <li>Priority email support</li>
           <li>Dedicated relays</li>
           <li>Advanced analytics</li>
         </ul>
-        <button onclick="selectPlan('scale', 2500)">Subscribe Now</button>
+        <button id="btnScale" onclick="selectPaidPlan('scale')">Subscribe Now</button>
       </div>
 
       <!-- Enterprise Plan -->
@@ -301,15 +400,108 @@
   </div>
 
   <script>
+    let currentPricing = {
+      starter: 500, // min $5
+      scale: 2500, // min $25
+      volume: 1
+    };
+
+    const slider = document.getElementById("volumeSlider");
+    const volumeValue = document.getElementById("volumeValue");
+    const priceStarter = document.getElementById("priceStarter");
+    const priceScale = document.getElementById("priceScale");
+    const planStarter = document.getElementById("planStarter");
+    const planScale = document.getElementById("planScale");
+
+    slider.addEventListener("input", function() {
+      const vol = parseInt(this.value);
+      
+      // Calculate display string for volume
+      if (vol === 0) {
+        volumeValue.textContent = "10k";
+        currentPricing.volume = 0.01;
+      } else if (vol === 100) {
+        volumeValue.textContent = "100M+";
+        currentPricing.volume = 100;
+      } else {
+        volumeValue.textContent = vol + " Million";
+        currentPricing.volume = vol;
+      }
+      
+      calculatePricing(vol);
+    });
+
+    function calculatePricing(vol) {
+      if (vol === 0) {
+        // Free tier level
+        currentPricing.starter = 500; // minimum
+        currentPricing.scale = 2500; // minimum
+        
+        priceStarter.textContent = "$5";
+        priceScale.textContent = "$25";
+        
+        // Highlight Starter
+        planStarter.classList.add("featured");
+        planStarter.classList.remove("disabled-plan");
+        planScale.classList.remove("featured");
+      } else if (vol <= 10) {
+        // Starter level ($0.50 per million)
+        let price = Math.max(5, Math.ceil(vol * 0.50));
+        currentPricing.starter = price * 100;
+        
+        priceStarter.textContent = "$" + price;
+        priceScale.textContent = "$25"; // default minimum for scale
+        
+        // Highlight Starter, disable Sale if not applicable
+        planStarter.classList.add("featured");
+        planStarter.classList.remove("disabled-plan");
+        planScale.classList.remove("featured");
+      } else if (vol <= 100) {
+        // Scale level ($0.25 per million)
+        // Disable starter
+        planStarter.classList.remove("featured");
+        planStarter.classList.add("disabled-plan");
+        
+        let price = Math.max(25, Math.ceil(vol * 0.25));
+        currentPricing.scale = price * 100;
+        
+        priceStarter.textContent = "$5"; // Reset visual
+        priceScale.textContent = "$" + price;
+        
+        // Highlight Scale
+        planScale.classList.add("featured");
+        planScale.classList.remove("disabled-plan");
+      }
+      
+      // If Enterprise/100M+
+      if (vol === 100) {
+        planScale.classList.remove("featured");
+        // Could highlight enterprise here
+      }
+    }
+
+    function selectPaidPlan(planType) {
+      let priceInCents = 0;
+      if (planType === 'starter') {
+        priceInCents = currentPricing.starter;
+      } else if (planType === 'scale') {
+        priceInCents = currentPricing.scale;
+      }
+      
+      // Redirect to checkout with dynamic price and volume
+      window.location.href = `/checkout?plan=${planType}&price=${priceInCents}&vol=${currentPricing.volume}`;
+    }
+
     function selectPlan(plan, price) {
       if (plan === 'free') {
         // Free plan - no signup required, redirect to app with free plan parameter
         window.location.href = '/?plan=free';
-      } else {
-        // Paid plan - redirect to checkout/signup (both require email)
-        window.location.href = `/checkout?plan=${plan}&price=${price}`;
       }
+      // Paid plan routing replaced by selectPaidPlan
     }
+    
+    // Initialize pricing on load
+    calculatePricing(1);
   </script>
 </body>
 

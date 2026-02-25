@@ -156,6 +156,10 @@
         <span>Plan:</span>
         <span id="planName">Professional</span>
       </div>
+      <div class="summary-row" id="volumeRow" style="display: none;">
+        <span>Volume:</span>
+        <span id="planVolume">1M</span>
+      </div>
       <div class="summary-row">
         <span>Billing:</span>
         <span>Monthly</span>
@@ -197,10 +201,22 @@
     const params = new URLSearchParams(window.location.search);
     const plan = params.get('plan') || 'starter';
     const price = params.get('price') || 500;
+    const vol = params.get('vol');
 
     // Update UI
     document.getElementById('planName').textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
     document.getElementById('planPrice').textContent = (price / 100).toFixed(2);
+
+    if (vol) {
+      document.getElementById('volumeRow').style.display = 'flex';
+      if (vol === '0.01') {
+        document.getElementById('planVolume').textContent = '10k msgs/mo';
+      } else if (vol === '100') {
+        document.getElementById('planVolume').textContent = '100M+ msgs/mo';
+      } else {
+        document.getElementById('planVolume').textContent = vol + 'M msgs/mo';
+      }
+    }
 
     async function processPayment() {
       const btn = document.getElementById('submitBtn');
