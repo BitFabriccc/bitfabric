@@ -31,7 +31,7 @@
 
           <div class="field" v-if="isEmailAuthed" style="max-width: 520px; margin-top: 10px;">
             <label for="roomSignedIn">API Key (paste to test)</label>
-            <input id="roomSignedIn" v-model="roomId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+            <input id="roomSignedIn" v-model="roomId" placeholder="bitfabric-global-tier" autocomplete="off" />
           </div>
 
           <div class="hero-actions">
@@ -131,7 +131,7 @@
           <div v-if="!isEmailAuthed" class="manual-key-entry">
             <p class="muted" style="margin-bottom: 12px;">Paste an API key below or sign in to use managed keys.</p>
             <div class="field-compact">
-              <input v-model="roomId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+              <input v-model="roomId" placeholder="bitfabric-global-tier" autocomplete="off" />
             </div>
             <div style="font-size: 11px; margin-top: 6px;" :style="isValidated ? 'color:var(--primary-color);' : (roomId ? 'color:#ff6b6b;' : 'color:var(--text-muted);')">
               {{ keySourceHint }}
@@ -353,7 +353,7 @@ import { PubSubFabric } from './fabric/index.js';
 
 // Check sessionStorage for stored API key (don't use URL for security)
 const storedApiKey = sessionStorage.getItem('bitfabric-api-key');
-const roomId = ref(storedApiKey || '');
+const roomId = ref(storedApiKey || 'bitfabric-global-tier');
 const authApiKey = ref(sessionStorage.getItem('bitfabric-auth-api-key') || '');
 const accountId = ref('');
 const signInEmail = ref('');
