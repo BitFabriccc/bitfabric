@@ -595,11 +595,11 @@ watch(roomId, (newVal) => {
 function startFreeSession() {
   isFreeTier.value = true;
   userPlan.value = 'free';
-  roomId.value = 'bitfabric-free-tier';
+  roomId.value = 'bitfabric-global-tier';
   publishTopic.value = freeTopic;
   subscribeTopic.value = freeTopic;
-  sessionStorage.setItem('bitfabric-free-tier', 'true');
-  sessionStorage.setItem('bitfabric-api-key', 'bitfabric-free-tier');
+  sessionStorage.setItem('bitfabric-global-tier', 'true');
+  sessionStorage.setItem('bitfabric-api-key', 'bitfabric-global-tier');
   pushLog('Started Global Tier session (no API key required)');
   connect();
 }
@@ -776,11 +776,11 @@ const planParam = new URLSearchParams(window.location.search).get('plan');
 if (planParam === 'free') {
   isFreeTier.value = true;
   userPlan.value = 'free';
-  roomId.value = 'bitfabric-free-tier';
+  roomId.value = 'bitfabric-global-tier';
   publishTopic.value = freeTopic;
   subscribeTopic.value = freeTopic;
-  sessionStorage.setItem('bitfabric-free-tier', 'true');
-  sessionStorage.setItem('bitfabric-api-key', 'bitfabric-free-tier');
+  sessionStorage.setItem('bitfabric-global-tier', 'true');
+  sessionStorage.setItem('bitfabric-api-key', 'bitfabric-global-tier');
   window.history.replaceState({}, '', window.location.pathname);
 }
 
@@ -1189,7 +1189,7 @@ function logout() {
   sessionStorage.removeItem('bitfabric-auth-api-key');
   sessionStorage.removeItem('bitfabric-email');
   sessionStorage.removeItem('bitfabric-password-hash');
-  sessionStorage.removeItem('bitfabric-free-tier');
+  sessionStorage.removeItem('bitfabric-global-tier');
   
   // Clear UI
   roomId.value = '';
