@@ -4,7 +4,7 @@
     <div class="app-shell">
       <section class="hero">
         <div class="logo-container">
-          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="main-logo" style="margin-bottom: 20px;">
+          <svg width="160" height="160" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="main-logo" style="margin-bottom: 20px;">
               <path d="M12 2L2 7L12 12M12 2L22 7L12 12M12 2V12M2 7V17L12 22M12 12V22M22 7V17L12 22"
                   stroke="url(#paint0_linear)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
               <defs>
@@ -1240,7 +1240,7 @@ if (isFreeTier.value && !userEmail.value) {
 }
 
 .main-logo {
-  height: 120px;
+  height: 160px;
   width: auto;
   transition: transform 0.3s ease;
 }
