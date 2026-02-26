@@ -678,6 +678,8 @@ function traceForumHistory() {
         receivedAt: msg.timestamp ? parseInt(msg.timestamp) || Date.now() : Date.now()
       });
       
+      messages.value.sort((a, b) => a.receivedAt - b.receivedAt);
+      
       // Allow larger buffer for forum messages
       if (messages.value.length > 200) messages.value.shift();
     } catch (e) {
@@ -1054,14 +1056,24 @@ function publish() {
     if (!subscribedTopics.value.includes(topic)) {
       const unsub = fabric.subscribe(topic, (message) => {
         pushLog(`Message received on ${topic}: ${JSON.stringify(message.data)}`);
-        messages.value.unshift({
+        
+        if (messages.value.some(m => m.messageId === message.messageId)) return;
+        
+        messages.value.push({
           topic: message.topic || topic,
           from: message.from || 'unknown',
           data: message.data || {},
           messageId: message.messageId,
           receivedAt: message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now()
         });
-        if (messages.value.length > 50) messages.value.pop();
+        
+        if (isForumVisible.value) {
+            messages.value.sort((a, b) => a.receivedAt - b.receivedAt);
+            if (messages.value.length > 200) messages.value.shift();
+        } else {
+            messages.value.sort((a, b) => b.receivedAt - a.receivedAt);
+            if (messages.value.length > 50) messages.value.pop();
+        }
       });
       
       unsubscribeFunctions.set(topic, unsub);
@@ -1090,14 +1102,24 @@ function addSubscription() {
 
   const unsub = fabric.subscribe(topic, (message) => {
     pushLog(`Message received on ${topic}: ${JSON.stringify(message.data)}`);
-    messages.value.unshift({
+    
+    if (messages.value.some(m => m.messageId === message.messageId)) return;
+    
+    messages.value.push({
       topic: message.topic || topic,
       from: message.from || 'unknown',
       data: typeof message.data === 'string' ? JSON.parse(message.data) : message.data,
       messageId: message.messageId,
       receivedAt: message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now()
     });
-    if (messages.value.length > 200) messages.value.pop();
+    
+    if (isForumVisible.value) {
+        messages.value.sort((a, b) => a.receivedAt - b.receivedAt);
+        if (messages.value.length > 200) messages.value.shift();
+    } else {
+        messages.value.sort((a, b) => b.receivedAt - a.receivedAt);
+        if (messages.value.length > 50) messages.value.pop();
+    }
   });
   
   unsubscribeFunctions.set(topic, unsub);
