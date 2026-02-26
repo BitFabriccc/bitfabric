@@ -20,7 +20,7 @@ const timeSeriesLabels = Array.from({ length: 30 }, (_, i) => {
     const secs = (30 - i) * 10;
     if (secs >= 60) return `${Math.floor(secs / 60)}m ${secs % 60}s ago`;
     return `${secs}s ago`;
-}).reverse();
+});
 const pubData = new Array(30).fill(0);
 const subData = new Array(30).fill(0);
 
