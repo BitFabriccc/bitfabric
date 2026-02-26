@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App IDs - BitFabric Dashboard</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f111a;
+            --bg-card: rgba(26, 29, 41, 0.7);
+            --bg-card-hover: rgba(36, 40, 56, 0.9);
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --secondary: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --glass-blur: blur(12px);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            background: rgba(15, 17, 26, 0.7);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar .logo {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar .back-link {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .navbar .back-link:hover {
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 40px;
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 40px;
+        }
+
+        .header-text h1 {
+            font-size: 32px;
+            margin: 0 0 8px 0;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-text p {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 15px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.6);
+        }
+
+        .btn-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .btn-success:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-danger {
+            background: rgba(244, 63, 94, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-danger:hover {
+            background: rgba(244, 63, 94, 0.2);
+            border-color: rgba(244, 63, 94, 0.4);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--text-main);
+            color: var(--text-main);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            margin-bottom: 24px;
+        }
+
+        .plan-alert {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 20px;
+            background: linear-gradient(to right, rgba(99, 102, 241, 0.1), transparent);
+            border-left: 4px solid var(--primary);
+            border-radius: 8px;
+            margin-bottom: 32px;
+        }
+
+        .plan-alert-icon {
+            color: var(--primary);
+        }
+
+        .plan-alert-content h4 {
+            margin: 0 0 4px 0;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .plan-alert-content p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .key-mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: #a5b4fc;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 10px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+        }
+
+        .actions-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 480px;
+            transform: translateY(20px);
+            transition: transform 0.2s;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header h3 {
+            margin: 0 0 8px 0;
+            font-size: 20px;
+        }
+
+        .modal-header p {
+            color: var(--text-muted);
+            margin: 0 0 24px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <a href="/" class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L2 7L12 12M12 2L22 7L12 12M12 2V12M2 7V17L12 22M12 12V22M22 7V17L12 22"
+                    stroke="url(#paint0_linear)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <defs>
+                    <linearGradient id="paint0_linear" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#818cf8" />
+                        <stop offset="1" stop-color="#f472b6" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            BitFabric
+        </a>
+        <a href="/pricing.html" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v8M8 12h8" />
+            </svg>
+            Upgrade Plan
+        </a>
+    </nav>
+
+    <div class="container">
+
+        <div class="header-section">
+            <div class="header-text">
+                <h1>App IDs</h1>
+                <p>Manage your public application identifiers for the Global Tier network.</p>
+            </div>
+            <button class="btn btn-primary" id="btn-create-modal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14" />
+                </svg>
+                Create App ID
+            </button>
+        </div>
+
+        <div class="plan-alert" id="plan-alert">
+            <div class="plan-alert-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+            </div>
+            <div class="plan-alert-content" style="flex: 1;">
+                <h4>Global Tier Active</h4>
+                <p>Your account allows unlimited App IDs to connect to the dedicated paid peer network.</p>
+            </div>
+            <div>
+                <a href="/analytics.html" class="btn btn-success">View Analytics</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                        <tr>
+                            <th width="30%">Resource Name</th>
+                            <th width="30%">ID / Key Value</th>
+                            <th width="20%">Capabilities</th>
+                            <th width="20%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keys-table-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+                <div id="empty-state" class="empty-state" style="display: none;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    <h4>No App IDs Found</h4>
+                    <p style="font-size: 14px; max-width: 400px; margin: 8px auto 0;">Create your first App ID to
+                        authenticate your application with the BitFabric network.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Create App Modal -->
+    <div class="modal-overlay" id="create-app-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New App ID</h3>
+                <p>Generate a public identifier to attach your application to the Global Tier.</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="app-name">Application Name</label>
+                <input type="text" id="app-name" class="form-input" placeholder="e.g. Production Web App, iOS Client"
+                    autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" id="btn-cancel-app">Cancel</button>
+                <button class="btn btn-primary" id="btn-create-app">Generate App ID</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Key Modal -->
+    <div class="modal-overlay" id="create-key-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create API Key</h3>
+                <p>Generate a secret API key to publish and subscribe under this App ID.</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="key-name">Key Name</label>
+                <input type="text" id="key-name" class="form-input" placeholder="e.g. Webhook Publisher"
+                    autocomplete="off">
+                <input type="hidden" id="key-app-id">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" id="btn-cancel-key">Cancel</button>
+                <button class="btn btn-primary" id="btn-create-key">Generate API Key</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/dashboard.js"></script>
+</body>
+
+</html>

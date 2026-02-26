@@ -152,7 +152,8 @@
             <div v-else class="empty-keys">No keys found.</div>
             
             <div v-if="userPlan === 'pro' || userPlan === 'enterprise'" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color);">
-              <button class="btn-outline btn-sm" @click="createKey">+ New Key</button>
+              <button class="btn-outline btn-sm" @click="createKey" style="width: 100%; margin-bottom: 8px;">+ New Key (Quick)</button>
+              <a class="btn-ghost btn-sm" href="/dashboard.html" target="_blank" style="display:block; text-align:center; text-decoration:none;">Manage All App IDs ↗</a>
             </div>
             <div v-else style="margin-top:12px;font-size:12px;color:var(--text-muted);text-align:center;">
                <a href="/pricing" target="_blank" style="color:var(--primary-color);">Upgrade for full management</a>

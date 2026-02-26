@@ -193,7 +193,7 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
     });
 
     // Subscribe to this room (topic-tag filtered)
-    const filterSince = since || Math.floor(Date.now() / 1000) - 300; // last 5 minutes if not provided
+    const filterSince = since || Math.floor(Date.now() / 1000); // From now if not provided
     const filter = {
       kinds: [1],
       '#t': [state.room],

@@ -36,7 +36,7 @@ async function computeAccountId(email) {
   const accountHashBuffer = await crypto.subtle.digest('SHA-256', accountData);
   const accountHashArray = Array.from(new Uint8Array(accountHashBuffer));
   const accountHash = accountHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return `${accountHash.substr(0,8)}-${accountHash.substr(8,4)}-${accountHash.substr(12,4)}-${accountHash.substr(16,4)}-${accountHash.substr(20,12)}`;
+  return `${accountHash.substr(0, 8)}-${accountHash.substr(8, 4)}-${accountHash.substr(12, 4)}-${accountHash.substr(16, 4)}-${accountHash.substr(20, 12)}`;
 }
 
 async function requireAccountAuth({ env, email, passwordHash }) {
@@ -82,7 +82,7 @@ export async function onRequestGet(context) {
 
   // Avoid putting passwordHash in URL: accept it via header for GET
   const passwordHash = request.headers.get('x-bitfabric-password-hash');
-  
+
   const auth = await requireAccountAuth({ env, email, passwordHash });
   if (!auth.ok) {
     return new Response(JSON.stringify({ error: auth.error }), {
@@ -90,13 +90,13 @@ export async function onRequestGet(context) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
-  
+
   try {
     // Fetch keys from D1 by account_id only (immutable per account)
     const results = await env.DB.prepare(
-      'SELECT * FROM api_keys WHERE account_id = ?'
+      'SELECT account_id, key_id, name, description, value, created_at, permanent, app_id FROM api_keys WHERE account_id = ?'
     ).bind(auth.accountId).all();
-    
+
     return new Response(JSON.stringify({ keys: results.results || [] }), {
       headers: { 'Content-Type': 'application/json' }
     });
@@ -111,8 +111,8 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
   const body = await request.json();
-  const { email, passwordHash, keyName, keyDescription } = body;
-  
+  const { email, passwordHash, keyName, keyDescription, appId } = body;
+
   if (!keyName) {
     return new Response(JSON.stringify({ error: 'Missing required fields' }), {
       status: 400,
@@ -152,14 +152,14 @@ export async function onRequestPost(context) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
-  
+
   try {
     const newKeyId = crypto.randomUUID();
     const newKeyValue = randomHex(32); // 64 hex chars
 
     // Insert key into D1 (server-generated value)
     await env.DB.prepare(
-      'INSERT INTO api_keys (account_id, key_id, name, description, value, created_at, permanent) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO api_keys (account_id, key_id, name, description, value, created_at, permanent, app_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     ).bind(
       auth.accountId,
       newKeyId,
@@ -167,9 +167,10 @@ export async function onRequestPost(context) {
       keyDescription || '',
       newKeyValue,
       Date.now(),
-      0
+      0,
+      appId || null
     ).run();
-    
+
     return new Response(JSON.stringify({
       success: true,
       key: {
@@ -178,7 +179,8 @@ export async function onRequestPost(context) {
         description: keyDescription || '',
         value: newKeyValue,
         created_at: Date.now(),
-        permanent: false
+        permanent: false,
+        app_id: appId || null
       }
     }), {
       headers: { 'Content-Type': 'application/json' }
@@ -195,7 +197,7 @@ export async function onRequestDelete(context) {
   const { request, env } = context;
   const body = await request.json();
   const { email, passwordHash, keyId } = body;
-  
+
   if (!keyId || keyId === 'default') {
     return new Response(JSON.stringify({ error: 'Invalid request' }), {
       status: 400,
@@ -210,12 +212,12 @@ export async function onRequestDelete(context) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
-  
+
   try {
     await env.DB.prepare(
       'DELETE FROM api_keys WHERE account_id = ? AND key_id = ?'
     ).bind(auth.accountId, keyId).run();
-    
+
     return new Response(JSON.stringify({ success: true }), {
       headers: { 'Content-Type': 'application/json' }
     });
