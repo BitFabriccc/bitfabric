@@ -57,10 +57,10 @@
               Sign in for Managed features &amp; API keys.
             </p>
             <div class="field-compact">
-              <input v-model="signInEmail" type="email" placeholder="Email" @keyup.enter="$refs.passCard.focus()" />
+              <input v-model="signInEmail" type="email" placeholder="Email" autocomplete="username" @keyup.enter="$refs.passCard.focus()" />
             </div>
             <div class="field-compact">
-              <input v-model="signInPassword" type="password" placeholder="Password" ref="passCard" @keyup.enter="signInWithEmail" />
+              <input v-model="signInPassword" type="password" placeholder="Password" autocomplete="current-password" ref="passCard" @keyup.enter="signInWithEmail" />
             </div>
             <button class="btn-primary" @click="signInWithEmail" :disabled="!signInEmail.trim() || !signInPassword.trim()">
               Sign In

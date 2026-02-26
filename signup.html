@@ -176,12 +176,13 @@
 
     <div class="field">
       <label for="email">Email Address</label>
-      <input type="email" id="email" placeholder="your@email.com" required>
+      <input type="email" id="email" placeholder="your@email.com" required autocomplete="username">
     </div>
 
     <div class="field">
       <label for="password">Password</label>
-      <input type="password" id="password" placeholder="Create a password" required minlength="6">
+      <input type="password" id="password" placeholder="Create a password" required minlength="6"
+        autocomplete="new-password">
     </div>
 
     <button onclick="generateKey()" id="generateBtn">Create Managed Account</button>
