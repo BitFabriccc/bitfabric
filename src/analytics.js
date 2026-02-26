@@ -222,12 +222,12 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
             elFeedStatus.style.color = '#10b981';
             mainChart.data.labels = timeSeriesLabels; // Reset to 30s labels
         } else {
-            elFeedStatus.textContent = `Historical: ${new Date(sinceTimestamp).toLocaleDateString()}`;
+            elFeedStatus.textContent = `Historical: ${new Date(sinceTimestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`;
             elFeedStatus.style.color = '#6366f1';
 
-            // Re-scale the chart labels to represent 24 hours (30 blocks = ~48 min each)
+            // Re-scale the chart labels to represent a 1-hour window (30 blocks = 2 min each)
             mainChart.data.labels = Array.from({ length: 30 }, (_, i) => {
-                const step = 86400000 / 30;
+                const step = 3600000 / 30;
                 const d = new Date(sinceTimestamp + (i * step));
                 return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
             });
@@ -285,8 +285,8 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
                     }
                 }
             } else {
-                // Bucket into the correct time slot for the historical day
-                const bucketSpan = 86400000 / 30;
+                // Bucket into the correct time slot for the historical 1-hour window
+                const bucketSpan = 3600000 / 30;
                 const offset = msg.timestamp - sinceTimestamp;
                 const bucketIdx = Math.max(0, Math.min(29, Math.floor(offset / bucketSpan)));
                 if (!isNaN(bucketIdx)) {
@@ -358,18 +358,19 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
 // History Date Picker
 const elHistoryDate = document.getElementById('history-date');
 
-// Set default to today
-const today = new Date();
-elHistoryDate.value = today.toISOString().split('T')[0];
+// Set default to now
+const now = new Date();
+now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+elHistoryDate.value = now.toISOString().slice(0, 16);
 
 elHistoryDate.addEventListener('change', async (e) => {
     const selectedDateStr = e.target.value;
     if (!selectedDateStr) return;
 
-    // Convert to Unix timestamps (start and end of the selected day in local time)
+    // Convert to Unix timestamps (1-hour window from the selected time)
     const selectedDate = new Date(selectedDateStr);
-    const startOfDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
-    const endOfDay = startOfDay + 86400000;
+    const startWindow = selectedDate.getTime();
+    const endWindow = startWindow + 3600000; // 1 hour
 
     // Clear State
     totalMessages = 0;
@@ -385,7 +386,7 @@ elHistoryDate.addEventListener('change', async (e) => {
     updateStatsUI();
 
     // Restart network with historical timeframe
-    await initNetwork(startOfDay, endOfDay);
+    await initNetwork(startWindow, endWindow);
 });
 
 initNetwork();

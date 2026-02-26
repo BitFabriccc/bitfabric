@@ -435,14 +435,13 @@
                 <div class="chart-header">
                     <h3>Real-Time Live Feed (<span id="feed-status" style="color:#10b981;">Connecting...</span>)</h3>
                     <div class="chart-actions">
-                        <input type="date" id="history-date"
+                        <input type="datetime-local" id="history-date"
                             style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); color: var(--text-main); padding: 6px 12px; border-radius: 6px; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; cursor: pointer;">
                     </div>
                 </div>
-
-            </div>
-            <div class="chart-container">
-                <canvas id="mainChart"></canvas>
+                <div class="chart-container">
+                    <canvas id="mainChart"></canvas>
+                </div>
             </div>
         </div>
 
