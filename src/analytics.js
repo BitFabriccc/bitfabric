@@ -275,7 +275,7 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
 
             if (!sinceTimestamp) {
                 // Live mode plotting: 30 buckets covering 5 minutes (10s each)
-                const ageMs = Date.now() - (msg.timestamp || Date.now());
+                const ageMs = Math.max(0, Date.now() - (msg.timestamp || Date.now()));
                 if (ageMs < 30 * 10000) {
                     const bucketIdx = 29 - Math.floor(ageMs / 10000);
                     if (bucketIdx >= 0 && bucketIdx <= 29) {
