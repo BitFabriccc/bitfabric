@@ -202,7 +202,8 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
     elFeedStatus.textContent = statusText;
     elFeedStatus.style.color = '#f59e0b';
 
-    const config = { roomId: 'bitfabric-global-tier' };
+    const selectedRoomId = document.getElementById('app-id-filter').value || 'bitfabric-global-tier';
+    const config = { roomId: selectedRoomId };
 
     // Inject custom history bounds into Nostr relay requests if requesting past data
     if (sinceTimestamp && untilTimestamp) {
@@ -271,7 +272,7 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
             if (msg.topic) activeTopics.add(msg.topic);
             if (msg.from) seenPeers.add(msg.from);
 
-            const isGlobal = msg.topic === 'bitfabric-global-tier';
+            const isGlobal = msg.topic === selectedRoomId;
 
             if (!sinceTimestamp) {
                 // Live mode plotting: 30 buckets covering 5 minutes (10s each)
@@ -343,10 +344,15 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
             return origPublish(topic, data);
         };
 
-        // Subscribe to common global topics to seed metrics
-        fabric.subscribe('bitfabric-global-tier', trackMessage);
-        fabric.subscribe('general-support', trackMessage);
-        fabric.subscribe('events', trackMessage);
+        // Subscribe to common global topics to seed metrics if using global tier
+        if (selectedRoomId === 'bitfabric-global-tier') {
+            fabric.subscribe('bitfabric-global-tier', trackMessage);
+            fabric.subscribe('general-support', trackMessage);
+            fabric.subscribe('events', trackMessage);
+        } else {
+            // Unconditionally catch all wildcard incoming for isolated App IDs
+            fabric.subscribe('*', trackMessage);
+        }
 
     } catch (err) {
         elFeedStatus.textContent = 'Connection Failed';
@@ -389,4 +395,58 @@ elHistoryDate.addEventListener('change', async (e) => {
     await initNetwork(startWindow, endWindow);
 });
 
-initNetwork();
+// App ID Filter change
+const elAppIdFilter = document.getElementById('app-id-filter');
+elAppIdFilter.addEventListener('change', async () => {
+    // Clear State
+    totalMessages = 0;
+    totalBytes = 0;
+    activeTopics.clear();
+    seenPeers.clear();
+    seenMessageIds.clear();
+    recentActivity = [];
+    pubData.fill(0);
+    subData.fill(0);
+    mainChart.update();
+    renderTable();
+    updateStatsUI();
+
+    const selectedDateStr = elHistoryDate.value;
+    if (!selectedDateStr) {
+        await initNetwork();
+        return;
+    }
+    const selectedDate = new Date(selectedDateStr);
+    const startWindow = selectedDate.getTime();
+    await initNetwork(startWindow, startWindow + 3600000);
+});
+
+// Load the keys if authenticated before connecting
+async function boot() {
+    const authEmail = sessionStorage.getItem('bitfabric-email');
+    const authPasswordHash = sessionStorage.getItem('bitfabric-password-hash');
+    if (authEmail && authPasswordHash) {
+        try {
+            const res = await fetch(`/api/app-ids?email=${encodeURIComponent(authEmail)}`, {
+                headers: { 'x-bitfabric-password-hash': authPasswordHash }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.appIds && data.appIds.length > 0) {
+                    for (let app of data.appIds) {
+                        const opt = document.createElement('option');
+                        opt.value = app.app_id;
+                        opt.textContent = `${app.name || 'App ID'} (${app.app_id.substring(0, 8)}...)`;
+                        opt.style.background = 'var(--bg-dark)';
+                        elAppIdFilter.appendChild(opt);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load App IDs', e);
+        }
+    }
+    initNetwork();
+}
+
+boot();

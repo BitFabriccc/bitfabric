@@ -59,11 +59,11 @@ async function requireAccountAuth({ env, email, passwordHash }) {
 
   // Keep premium accounts premium if whitelisted
   const shouldBePremium = isPremiumEmail(normalizedEmail);
-  if (shouldBePremium && account.plan !== 'premium') {
+  if (shouldBePremium && account.plan !== 'enterprise') {
     await env.DB.prepare('UPDATE accounts SET plan = ?, updated_at = ? WHERE email = ?')
-      .bind('premium', Date.now(), normalizedEmail)
+      .bind('enterprise', Date.now(), normalizedEmail)
       .run();
-    account.plan = 'premium';
+    account.plan = 'enterprise';
   }
 
   return { ok: true, email: normalizedEmail, accountId: account.account_id, plan: account.plan };
@@ -94,7 +94,7 @@ export async function onRequestGet(context) {
   try {
     // Fetch keys from D1 by account_id only (immutable per account)
     const results = await env.DB.prepare(
-      'SELECT account_id, key_id, name, description, value, created_at, permanent, app_id FROM api_keys WHERE account_id = ?'
+      'SELECT account_id, key_id, name, description, value, created_at, permanent FROM api_keys WHERE account_id = ?'
     ).bind(auth.accountId).all();
 
     return new Response(JSON.stringify({ keys: results.results || [] }), {
@@ -111,7 +111,7 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
   const body = await request.json();
-  const { email, passwordHash, keyName, keyDescription, appId } = body;
+  const { email, passwordHash, keyName, keyDescription } = body;
 
   if (!keyName) {
     return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -159,7 +159,7 @@ export async function onRequestPost(context) {
 
     // Insert key into D1 (server-generated value)
     await env.DB.prepare(
-      'INSERT INTO api_keys (account_id, key_id, name, description, value, created_at, permanent, app_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO api_keys (account_id, key_id, name, description, value, created_at, permanent) VALUES (?, ?, ?, ?, ?, ?, ?)'
     ).bind(
       auth.accountId,
       newKeyId,
@@ -167,8 +167,7 @@ export async function onRequestPost(context) {
       keyDescription || '',
       newKeyValue,
       Date.now(),
-      0,
-      appId || null
+      0
     ).run();
 
     return new Response(JSON.stringify({
@@ -179,8 +178,7 @@ export async function onRequestPost(context) {
         description: keyDescription || '',
         value: newKeyValue,
         created_at: Date.now(),
-        permanent: false,
-        app_id: appId || null
+        permanent: false
       }
     }), {
       headers: { 'Content-Type': 'application/json' }

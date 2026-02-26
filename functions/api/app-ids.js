@@ -43,11 +43,11 @@ async function requireAccountAuth({ env, email, passwordHash }) {
     }
 
     const shouldBePremium = isPremiumEmail(normalizedEmail);
-    if (shouldBePremium && account.plan !== 'premium') {
+    if (shouldBePremium && account.plan !== 'enterprise') {
         await env.DB.prepare('UPDATE accounts SET plan = ?, updated_at = ? WHERE email = ?')
-            .bind('premium', Date.now(), normalizedEmail)
+            .bind('enterprise', Date.now(), normalizedEmail)
             .run();
-        account.plan = 'premium';
+        account.plan = 'enterprise';
     }
 
     return { ok: true, email: normalizedEmail, accountId: account.account_id, plan: account.plan };
@@ -78,7 +78,7 @@ export async function onRequestGet(context) {
 
     try {
         const results = await env.DB.prepare(
-            'SELECT id, app_id, name, created_at FROM app_ids WHERE account_id = ? ORDER BY created_at DESC'
+            'SELECT id, app_id, name, api_key_id, created_at FROM app_ids WHERE account_id = ? ORDER BY created_at DESC'
         ).bind(auth.accountId).all();
 
         return new Response(JSON.stringify({ appIds: results.results || [] }), {
@@ -95,7 +95,7 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
     const { request, env } = context;
     const body = await request.json();
-    const { email, passwordHash, appName } = body;
+    const { email, passwordHash, appName, apiKeyId } = body;
 
     if (!appName) {
         return new Response(JSON.stringify({ error: 'Missing appName' }), {
@@ -136,11 +136,13 @@ export async function onRequestPost(context) {
         const createdAt = Date.now();
 
         await env.DB.prepare(
-            'INSERT INTO app_ids (account_id, app_id, name, created_at) VALUES (?, ?, ?, ?)'
+            'INSERT INTO app_ids (account_id, app_id, name, api_key_id, capabilities, created_at) VALUES (?, ?, ?, ?, ?, ?)'
         ).bind(
             auth.accountId,
             newAppId,
             appName,
+            apiKeyId || null,
+            body.capabilities || 'inherit',
             createdAt
         ).run();
 
@@ -149,6 +151,8 @@ export async function onRequestPost(context) {
             appId: {
                 app_id: newAppId,
                 name: appName,
+                api_key_id: apiKeyId || null,
+                capabilities: body.capabilities || 'inherit',
                 created_at: createdAt
             }
         }), {
@@ -186,6 +190,47 @@ export async function onRequestDelete(context) {
         await env.DB.prepare(
             'DELETE FROM app_ids WHERE account_id = ? AND app_id = ?'
         ).bind(auth.accountId, appId).run();
+
+        return new Response(JSON.stringify({ success: true }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
+export async function onRequestPut(context) {
+    const { request, env } = context;
+    const body = await request.json();
+    const { email, passwordHash, appId, apiKeyId } = body;
+
+    if (!appId) {
+        return new Response(JSON.stringify({ error: 'Missing appId' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    const auth = await requireAccountAuth({ env, email, passwordHash });
+    if (!auth.ok) {
+        return new Response(JSON.stringify({ error: auth.error }), {
+            status: auth.status,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    try {
+        if (body.capabilities) {
+            await env.DB.prepare(
+                'UPDATE app_ids SET api_key_id = ?, capabilities = ? WHERE account_id = ? AND app_id = ?'
+            ).bind(apiKeyId || null, body.capabilities, auth.accountId, appId).run();
+        } else {
+            await env.DB.prepare(
+                'UPDATE app_ids SET api_key_id = ? WHERE account_id = ? AND app_id = ?'
+            ).bind(apiKeyId || null, auth.accountId, appId).run();
+        }
 
         return new Response(JSON.stringify({ success: true }), {
             headers: { 'Content-Type': 'application/json' }

@@ -24,13 +24,13 @@ function isPremiumEmail(email) {
 async function computeAccountId(email) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return '';
-  const suffix = isPremiumEmail(normalizedEmail) ? 'premium' : 'free';
+  const suffix = isPremiumEmail(normalizedEmail) ? 'enterprise' : 'free';
   const encoder = new TextEncoder();
   const accountData = encoder.encode(`bitfabric-account-${normalizedEmail}-${suffix}`);
   const accountHashBuffer = await crypto.subtle.digest('SHA-256', accountData);
   const accountHashArray = Array.from(new Uint8Array(accountHashBuffer));
   const accountHash = accountHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return `${accountHash.substr(0,8)}-${accountHash.substr(8,4)}-${accountHash.substr(12,4)}-${accountHash.substr(16,4)}-${accountHash.substr(20,12)}`;
+  return `${accountHash.substr(0, 8)}-${accountHash.substr(8, 4)}-${accountHash.substr(12, 4)}-${accountHash.substr(16, 4)}-${accountHash.substr(20, 12)}`;
 }
 
 function randomHex(bytes) {
@@ -41,12 +41,12 @@ function randomHex(bytes) {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  
+
   try {
     const body = await request.json();
     const email = normalizeEmail(body?.email);
     const passwordHash = normalizePasswordHash(body?.passwordHash);
-    
+
     if (!email) {
       return new Response(JSON.stringify({ error: 'Missing email' }), {
         status: 400,
@@ -60,13 +60,13 @@ export async function onRequestPost(context) {
         headers: { 'Content-Type': 'application/json' }
       });
     }
-    
+
     const isPremium = isPremiumEmail(email);
-    const plan = isPremium ? 'premium' : 'starter';
+    const plan = isPremium ? 'enterprise' : 'starter';
 
     let emailVerified = false;
     let verificationSent = false;
-    
+
     const accountId = await computeAccountId(email);
     if (!accountId) {
       return new Response(JSON.stringify({ error: 'Invalid email' }), {
@@ -105,10 +105,10 @@ export async function onRequestPost(context) {
         }
 
         // If whitelisted email is premium, keep plan upgraded
-        if (isPremium && existingAccount.plan !== 'premium') {
+        if (isPremium && existingAccount.plan !== 'enterprise') {
           await env.DB.prepare(
             'UPDATE accounts SET plan = ?, updated_at = ? WHERE email = ?'
-          ).bind('premium', Date.now(), email).run();
+          ).bind('enterprise', Date.now(), email).run();
         }
       }
     } catch (dbError) {
@@ -121,7 +121,7 @@ export async function onRequestPost(context) {
     // DB-backed default key (create once, then reuse forever)
     let sessionKey = null;
     let defaultKeyRow = null;
-    
+
     try {
       const existing = await env.DB.prepare(
         'SELECT * FROM api_keys WHERE account_id = ? AND key_id = ? LIMIT 1'
@@ -157,14 +157,14 @@ export async function onRequestPost(context) {
       // Fallback: still return a key, but DB might not persist it
       sessionKey = sessionKey || randomHex(32);
     }
-    
-    return new Response(JSON.stringify({ 
+
+    return new Response(JSON.stringify({
       authenticated: true,
       isPremium,
       email,
       sessionKey,
       accountId: accountId,
-      plan: isPremium ? 'premium' : 'starter',
+      plan: isPremium ? 'enterprise' : 'starter',
       emailVerified,
       verificationSent,
       defaultKey: {
