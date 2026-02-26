@@ -670,12 +670,13 @@ function traceForumHistory() {
       // Check if we already have this message
       if (messages.value.some(m => m.messageId === msg.messageId)) return;
 
+      const rawTimestamp = msg.timestamp ? parseInt(msg.timestamp) || Date.now() : Date.now();
       messages.value.push({
         topic: msg.topic,
         from: msg.from,
         data: payloadData || {},
         messageId: msg.messageId,
-        receivedAt: msg.timestamp ? parseInt(msg.timestamp) || Date.now() : Date.now()
+        receivedAt: Math.min(rawTimestamp, Date.now())
       });
       
       messages.value.sort((a, b) => a.receivedAt - b.receivedAt);
@@ -1059,12 +1060,13 @@ function publish() {
         
         if (messages.value.some(m => m.messageId === message.messageId)) return;
         
+        const rawTimestamp = message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now();
         messages.value.push({
           topic: message.topic || topic,
           from: message.from || 'unknown',
           data: message.data || {},
           messageId: message.messageId,
-          receivedAt: message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now()
+          receivedAt: Math.min(rawTimestamp, Date.now())
         });
         
         if (isForumVisible.value) {
@@ -1105,12 +1107,13 @@ function addSubscription() {
     
     if (messages.value.some(m => m.messageId === message.messageId)) return;
     
+    const rawTimestamp = message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now();
     messages.value.push({
       topic: message.topic || topic,
       from: message.from || 'unknown',
       data: typeof message.data === 'string' ? JSON.parse(message.data) : message.data,
       messageId: message.messageId,
-      receivedAt: message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now()
+      receivedAt: Math.min(rawTimestamp, Date.now())
     });
     
     if (isForumVisible.value) {
