@@ -456,7 +456,9 @@ const roomOptions = computed(() => {
     label: `API Key: ${key.name || 'Default'} (${(key.value || '').substring(0, 12)}...)`
   }));
 
-  const appOptions = appIds.value.map((app) => ({
+  const appOptions = appIds.value
+    .filter((app) => !!app.api_key_id)
+    .map((app) => ({
     key: `app-${app.app_id}`,
     value: app.app_id,
     label: `Room/App ID: ${app.name || 'Unnamed'} (${(app.app_id || '').substring(0, 12)}...)`
@@ -465,9 +467,17 @@ const roomOptions = computed(() => {
   return [...keyOptions, ...appOptions];
 });
 
+const selectedApp = computed(() => appIds.value.find(a => a.app_id === roomId.value));
+const selectedParentKey = computed(() => {
+  const app = selectedApp.value;
+  if (!app || !app.api_key_id) return null;
+  return apiKeys.value.find(k => k.key_id === app.api_key_id) || null;
+});
+
 const effectiveApiKeyDisplay = computed(() => {
   const selectedIsApiKey = apiKeys.value.some(k => k.value === roomId.value);
-  return (testApiKey.value?.trim() || (selectedIsApiKey ? roomId.value : '') || 'none');
+  const derivedFromApp = selectedParentKey.value?.value || '';
+  return (testApiKey.value?.trim() || (selectedIsApiKey ? roomId.value : '') || derivedFromApp || 'none');
 });
 
 const effectiveRoomDisplay = computed(() => {
@@ -1114,8 +1124,9 @@ async function connect() {
   }
 
   const selectedIsApiKey = apiKeys.value.some(k => k.value === roomId.value);
-  const selectedIsApp = appIds.value.some(a => a.app_id === roomId.value);
-  const normalizedApiKey = (testApiKey.value?.trim() || (selectedIsApiKey ? roomId.value : '') || '').trim();
+  const selectedIsApp = !!selectedApp.value;
+  const parentApiKey = selectedParentKey.value?.value || '';
+  const normalizedApiKey = (testApiKey.value?.trim() || (selectedIsApiKey ? roomId.value : '') || parentApiKey || '').trim();
   const normalizedRoom = (testRoomId.value?.trim() || (selectedIsApp ? roomId.value : '') || normalizedApiKey || roomId.value || '').trim();
 
   // Room IDs require an API key for authenticated/testing flows
