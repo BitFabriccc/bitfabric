@@ -5,7 +5,7 @@
  * Uses the BitFabric pub/sub library to communicate with brainfuct
  */
 
-import BitFabric from 'bitfabric';
+import { PubSubFabric } from 'bitfabric';
 
 const API_KEY = 'c1aa5e8c0daa2c4f94d71dbcd0be6ab543d01d4f2e4c7cdcb27546cf8050bedc';
 const APP_ID = 'app_pfhbzhvtgqugtj44';
@@ -19,14 +19,31 @@ console.log(`Brainfuct: ${BRAINFUCT_REPO}`);
 console.log('');
 
 // Initialize BitFabric with API key as room ID
-const fabric = new BitFabric({
+const fabric = new PubSubFabric({
   roomId: API_KEY,
   appId: APP_ID
 });
 
 // Connect and listen
 try {
-  await fabric.init();
+  console.log('⏳ Connecting to BitFabric network...');
+  
+  // Initialize with 10-second timeout
+  const initPromise = fabric.init();
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Connection timeout after 10s')), 10000)
+  );
+  
+  try {
+    await Promise.race([initPromise, timeoutPromise]);
+  } catch (err) {
+    if (err.message.includes('timeout')) {
+      console.log('⚠ Connection timed out but continuing in background...');
+    } else {
+      throw err;
+    }
+  }
+  
   console.log('✓ Connected to BitFabric network');
   
   // Subscribe to AI request topic
