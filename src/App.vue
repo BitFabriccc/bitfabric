@@ -26,11 +26,12 @@
         <div>
           <div class="meta" v-if="isEmailAuthed">
             <span class="tag">{{ userEmail }}</span>
-            <span class="tag">API Key: {{ roomId }}</span>
+            <span class="tag">API Key: {{ effectiveApiKeyDisplay }}</span>
+            <span class="tag">Room: {{ effectiveRoomDisplay }}</span>
           </div>
 
           <div class="field" v-if="isEmailAuthed && roomOptions.length > 0" style="max-width: 520px; margin-top: 10px;">
-            <label for="roomSignedInSelect">API Key</label>
+            <label for="roomSignedInSelect">Select API Key or Room</label>
             <select id="roomSignedInSelect" v-model="roomId" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 14px;">
               <option v-for="room in roomOptions" :key="`connect-${room.key}`" :value="room.value">
                 {{ room.label }}
@@ -38,7 +39,17 @@
             </select>
           </div>
 
-          <div class="field" v-else-if="isEmailAuthed" style="max-width: 520px; margin-top: 10px;">
+          <div class="field" v-if="isEmailAuthed" style="max-width: 520px; margin-top: 10px;">
+            <label for="testApiKey">Test API Key Override (optional)</label>
+            <input id="testApiKey" v-model="testApiKey" placeholder="Paste API key for testing" autocomplete="off" />
+          </div>
+
+          <div class="field" v-if="isEmailAuthed" style="max-width: 520px; margin-top: 10px;">
+            <label for="testRoomId">Test Room ID Override (optional)</label>
+            <input id="testRoomId" v-model="testRoomId" placeholder="Paste room/app id for testing" autocomplete="off" />
+          </div>
+
+          <div class="field" v-if="isEmailAuthed && roomOptions.length === 0" style="max-width: 520px; margin-top: 10px;">
             <label for="roomSignedIn">API Key (manual)</label>
             <input id="roomSignedIn" v-model="roomId" placeholder="bitfabric-global-tier" autocomplete="off" />
           </div>
@@ -397,6 +408,8 @@ const isFreeTier = ref(sessionStorage.getItem('bitfabric-global-tier') === 'true
 const freeTopic = 'bitfabric-global-tier';
 const publishTopic = ref(isFreeTier.value ? freeTopic : 'events');
 const subscribeTopic = ref(isFreeTier.value ? freeTopic : 'events');
+const testApiKey = ref('');
+const testRoomId = ref('');
 const messageData = ref('{"type": "test", "value": 123}');
 const messages = ref([]);
 const logs = ref([]);
@@ -437,11 +450,30 @@ const forumMessages = computed(() => {
 const isEmailAuthed = computed(() => !!userEmail.value?.trim());
 const isSessionActive = computed(() => isEmailAuthed.value || isFreeTier.value || isValidated.value);
 const roomOptions = computed(() => {
-  return apiKeys.value.map((key) => ({
+  const keyOptions = apiKeys.value.map((key) => ({
     key: `key-${key.key_id || key.value}`,
     value: key.value,
     label: `API Key: ${key.name || 'Default'} (${(key.value || '').substring(0, 12)}...)`
   }));
+
+  const appOptions = appIds.value.map((app) => ({
+    key: `app-${app.app_id}`,
+    value: app.app_id,
+    label: `Room/App ID: ${app.name || 'Unnamed'} (${(app.app_id || '').substring(0, 12)}...)`
+  }));
+
+  return [...keyOptions, ...appOptions];
+});
+
+const effectiveApiKeyDisplay = computed(() => {
+  const selectedIsApiKey = apiKeys.value.some(k => k.value === roomId.value);
+  return (testApiKey.value?.trim() || (selectedIsApiKey ? roomId.value : '') || 'none');
+});
+
+const effectiveRoomDisplay = computed(() => {
+  const selectedIsApp = appIds.value.some(a => a.app_id === roomId.value);
+  const selectedIsApiKey = apiKeys.value.some(k => k.value === roomId.value);
+  return (testRoomId.value?.trim() || (selectedIsApp ? roomId.value : '') || (selectedIsApiKey ? roomId.value : '') || 'none');
 });
 
 const stats = ref({
@@ -1081,9 +1113,21 @@ async function connect() {
     startFreeSession();
   }
 
+  const selectedIsApiKey = apiKeys.value.some(k => k.value === roomId.value);
+  const selectedIsApp = appIds.value.some(a => a.app_id === roomId.value);
+  const normalizedApiKey = (testApiKey.value?.trim() || (selectedIsApiKey ? roomId.value : '') || '').trim();
+  const normalizedRoom = (testRoomId.value?.trim() || (selectedIsApp ? roomId.value : '') || normalizedApiKey || roomId.value || '').trim();
+
+  // Room IDs require an API key for authenticated/testing flows
+  if (!isFreeTier.value && !isForumVisible.value && !normalizedApiKey) {
+    pushLog('API key required: provide/select an API key before connecting to a room.');
+    status.value = 'error';
+    return;
+  }
+
   // Server-side validation: only for unauthenticated users with manual room IDs
   if (!isFreeTier.value && !isEmailAuthed.value && !isForumVisible.value) {
-    await validateManualKey(roomId.value);
+    await validateManualKey(normalizedApiKey || roomId.value);
     if (!isValidated.value) {
       pushLog('Connection Restriction: Invalid key prevents connection to custom room.');
       status.value = 'error';
@@ -1095,17 +1139,21 @@ async function connect() {
 
   await disconnect();
   
-  // Store API key in sessionStorage only (never in URL)
-  sessionStorage.setItem('bitfabric-api-key', roomId.value);
+  // Store selected API key only (never in URL)
+  if (normalizedApiKey) {
+    sessionStorage.setItem('bitfabric-api-key', normalizedApiKey);
+  }
   
   status.value = 'connecting';
   pushLog('Booting fabric…');
 
   try {
-    const normalizedRoomId = roomId.value?.trim() || '';
+    const normalizedRoomId = normalizedRoom;
     const effectiveRoomId = (isFreeTier.value && !normalizedRoomId) 
       ? freeTopic 
       : (normalizedRoomId || 'default');
+
+    roomId.value = effectiveRoomId;
 
     fabric = new PubSubFabric({
       roomId: effectiveRoomId,
