@@ -193,6 +193,14 @@
 
         <div class="card">
           <h3>Publish</h3>
+          <div class="field" v-if="isEmailAuthed && roomOptions.length > 0">
+            <label for="publishRoom">Target Room (App ID / API Key)</label>
+            <select id="publishRoom" v-model="publishRoomId" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 14px;">
+              <option v-for="room in roomOptions" :key="room.key" :value="room.value">
+                {{ room.label }}
+              </option>
+            </select>
+          </div>
           <div class="field">
             <label for="topic">Topic</label>
             <input id="topic" v-model="publishTopic" placeholder="e.g., events, data" autocomplete="off" />
@@ -370,6 +378,7 @@ import { PubSubFabric } from './fabric/index.js';
 // Check sessionStorage for stored API key (don't use URL for security)
 const storedApiKey = sessionStorage.getItem('bitfabric-api-key');
 const roomId = ref(storedApiKey || 'bitfabric-global-tier');
+const publishRoomId = ref(storedApiKey || 'bitfabric-global-tier'); // Separate room for publishing
 const authApiKey = ref(sessionStorage.getItem('bitfabric-auth-api-key') || '');
 const accountId = ref('');
 const signInEmail = ref('');
@@ -389,6 +398,7 @@ const userPlan = ref('free');
 const newKeyName = ref('');
 const newKeyDescription = ref('');
 const apiKeys = ref([]);
+const appIds = ref([]);
 const relayState = ref('idle');
 const relayUrl = ref('');
 const relayPollInterval = ref(null);
@@ -417,6 +427,21 @@ const forumMessages = computed(() => {
 
 const isEmailAuthed = computed(() => !!userEmail.value?.trim());
 const isSessionActive = computed(() => isEmailAuthed.value || isFreeTier.value || isValidated.value);
+const roomOptions = computed(() => {
+  const keyOptions = apiKeys.value.map((key) => ({
+    key: `key-${key.key_id || key.value}`,
+    value: key.value,
+    label: `API Key: ${key.name || 'Default'} (${(key.value || '').substring(0, 12)}...)`
+  }));
+
+  const appOptions = appIds.value.map((app) => ({
+    key: `app-${app.app_id}`,
+    value: app.app_id,
+    label: `App ID: ${app.name || 'Unnamed'} (${(app.app_id || '').substring(0, 12)}...)`
+  }));
+
+  return [...keyOptions, ...appOptions];
+});
 
 const stats = ref({
   messagesPublished: 0,
@@ -487,21 +512,48 @@ async function initializeFromStorage() {
     userEmail.value = authData.email || '';
     userPlan.value = authData.plan || 'starter';
 
-    // Fetch API keys from D1 database
+    // Fetch API keys + App IDs from D1 database
     try {
-      const response = await fetch(`/api/keys?email=${encodeURIComponent(authData.email)}`, {
-        headers: {
-          'x-bitfabric-password-hash': storedPasswordHash
+      const [keysResponse, appIdsResponse] = await Promise.all([
+        fetch(`/api/keys?email=${encodeURIComponent(authData.email)}`, {
+          headers: {
+            'x-bitfabric-password-hash': storedPasswordHash
+          }
+        }),
+        fetch(`/api/app-ids?email=${encodeURIComponent(authData.email)}`, {
+          headers: {
+            'x-bitfabric-password-hash': storedPasswordHash
+          }
+        })
+      ]);
+
+      if (keysResponse.ok) {
+        const keyData = await keysResponse.json();
+        apiKeys.value = keyData.keys || [];
+        const defaultKey = apiKeys.value.find(k => k.key_id === 'default');
+        if (defaultKey) {
+          roomId.value = defaultKey.value;
+          publishRoomId.value = defaultKey.value;
         }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        apiKeys.value = data.keys || [];
       } else if (authData.defaultKey) {
         apiKeys.value = [authData.defaultKey];
+        roomId.value = authData.defaultKey.value;
+        publishRoomId.value = authData.defaultKey.value;
+      }
+
+      if (appIdsResponse.ok) {
+        const appData = await appIdsResponse.json();
+        appIds.value = appData.appIds || [];
+      } else {
+        appIds.value = [];
       }
     } catch (error) {
-      if (authData.defaultKey) apiKeys.value = [authData.defaultKey];
+      if (authData.defaultKey) {
+        apiKeys.value = [authData.defaultKey];
+        roomId.value = authData.defaultKey.value;
+        publishRoomId.value = authData.defaultKey.value;
+      }
+      appIds.value = [];
     }
     
     if (authData.plan === 'burst') {
@@ -853,9 +905,44 @@ if (emailParam) {
     userEmail.value = authData.email || '';
     userPlan.value = authData.plan || 'starter';
         
-        // Set default key if returned
-        if (authData.defaultKey) {
-          apiKeys.value = [authData.defaultKey];
+        // Load keys + app IDs for publish room dropdown
+        try {
+          const [keysResponse, appIdsResponse] = await Promise.all([
+            fetch(`/api/keys?email=${encodeURIComponent(authData.email)}`, {
+              headers: { 'x-bitfabric-password-hash': storedPasswordHash }
+            }),
+            fetch(`/api/app-ids?email=${encodeURIComponent(authData.email)}`, {
+              headers: { 'x-bitfabric-password-hash': storedPasswordHash }
+            })
+          ]);
+
+          if (keysResponse.ok) {
+            const keysData = await keysResponse.json();
+            apiKeys.value = keysData.keys || [];
+            const defaultKey = apiKeys.value.find(k => k.key_id === 'default');
+            if (defaultKey) {
+              roomId.value = defaultKey.value;
+              publishRoomId.value = defaultKey.value;
+            }
+          } else if (authData.defaultKey) {
+            apiKeys.value = [authData.defaultKey];
+            roomId.value = authData.defaultKey.value;
+            publishRoomId.value = authData.defaultKey.value;
+          }
+
+          if (appIdsResponse.ok) {
+            const appData = await appIdsResponse.json();
+            appIds.value = appData.appIds || [];
+          } else {
+            appIds.value = [];
+          }
+        } catch {
+          if (authData.defaultKey) {
+            apiKeys.value = [authData.defaultKey];
+            roomId.value = authData.defaultKey.value;
+            publishRoomId.value = authData.defaultKey.value;
+          }
+          appIds.value = [];
         }
         
         // Clear email from URL
@@ -927,30 +1014,49 @@ async function signInWithEmail() {
     userEmail.value = authData.email || '';
     userPlan.value = authData.plan || 'starter';
 
-    // Load keys list (DB)
+    // Load keys + app IDs list (DB)
     try {
-      const response = await fetch(`/api/keys?email=${encodeURIComponent(authData.email)}`, {
-        headers: {
-          'x-bitfabric-password-hash': passwordHash
-        }
-      });
-      if (response.ok) {
-        const keysData = await response.json();
+      const [keysResponse, appIdsResponse] = await Promise.all([
+        fetch(`/api/keys?email=${encodeURIComponent(authData.email)}`, {
+          headers: {
+            'x-bitfabric-password-hash': passwordHash
+          }
+        }),
+        fetch(`/api/app-ids?email=${encodeURIComponent(authData.email)}`, {
+          headers: {
+            'x-bitfabric-password-hash': passwordHash
+          }
+        })
+      ]);
+
+      if (keysResponse.ok) {
+        const keysData = await keysResponse.json();
         apiKeys.value = keysData.keys || [];
         // Use the default key as the room ID (not the session key)
         const defaultKey = apiKeys.value.find(k => k.key_id === 'default');
         if (defaultKey) {
           roomId.value = defaultKey.value;
+          publishRoomId.value = defaultKey.value; // Also set publish room
         }
       } else if (authData.defaultKey) {
         apiKeys.value = [authData.defaultKey];
         roomId.value = authData.defaultKey.value;
+        publishRoomId.value = authData.defaultKey.value;
+      }
+
+      if (appIdsResponse.ok) {
+        const appData = await appIdsResponse.json();
+        appIds.value = appData.appIds || [];
+      } else {
+        appIds.value = [];
       }
     } catch {
       if (authData.defaultKey) {
         apiKeys.value = [authData.defaultKey];
         roomId.value = authData.defaultKey.value;
+        publishRoomId.value = authData.defaultKey.value;
       }
+      appIds.value = [];
     }
 
     connect();
@@ -1084,6 +1190,8 @@ function publish() {
   if (!fabric || !isReady.value) return;
   let topic = publishTopic.value.trim();
   const dataStr = messageData.value.trim();
+  const targetRoom = publishRoomId.value; // Use the selected room from dropdown
+  
   if (!topic || !dataStr) return;
 
   // STRICT TOPIC ENFORCEMENT for unvalidated sessions
@@ -1098,40 +1206,59 @@ function publish() {
   try {
     const data = JSON.parse(dataStr);
     
-    // Auto-subscribe to the topic if not already subscribed
-    if (!subscribedTopics.value.includes(topic)) {
-      const unsub = fabric.subscribe(topic, (message) => {
-        pushLog(`Message received on ${topic}: ${JSON.stringify(message.data)}`);
-        
-        if (messages.value.some(m => m.messageId === message.messageId)) return;
-        
-        const rawTimestamp = message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now();
-        messages.value.push({
-          topic: message.topic || topic,
-          from: message.from || 'unknown',
-          data: message.data || {},
-          messageId: message.messageId,
-          receivedAt: Math.min(rawTimestamp, Date.now())
+    // Create a temporary fabric instance for the target room if different from current
+    const publishFabric = (targetRoom && targetRoom !== roomId.value) 
+      ? new PubSubFabric({ roomId: targetRoom, nostrRelays })
+      : fabric;
+    
+    // Initialize temporary fabric if needed
+    const publishPromise = (publishFabric === fabric)
+      ? Promise.resolve()
+      : publishFabric.init();
+    
+    publishPromise.then(() => {
+      // Auto-subscribe to the topic if not already subscribed (only for main fabric)
+      if (publishFabric === fabric && !subscribedTopics.value.includes(topic)) {
+        const unsub = fabric.subscribe(topic, (message) => {
+          pushLog(`Message received on ${topic}: ${JSON.stringify(message.data)}`);
+          
+          if (messages.value.some(m => m.messageId === message.messageId)) return;
+          
+          const rawTimestamp = message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now();
+          messages.value.push({
+            topic: message.topic || topic,
+            from: message.from || 'unknown',
+            data: message.data || {},
+            messageId: message.messageId,
+            receivedAt: Math.min(rawTimestamp, Date.now())
+          });
+          
+          if (isForumVisible.value) {
+              messages.value.sort((a, b) => a.receivedAt - b.receivedAt);
+              if (messages.value.length > 200) messages.value.shift();
+          } else {
+              messages.value.sort((a, b) => b.receivedAt - a.receivedAt);
+              if (messages.value.length > 50) messages.value.pop();
+          }
         });
         
-        if (isForumVisible.value) {
-            messages.value.sort((a, b) => a.receivedAt - b.receivedAt);
-            if (messages.value.length > 200) messages.value.shift();
-        } else {
-            messages.value.sort((a, b) => b.receivedAt - a.receivedAt);
-            if (messages.value.length > 50) messages.value.pop();
+        unsubscribeFunctions.set(topic, unsub);
+        subscribedTopics.value.push(topic);
+        pushLog(`Auto-subscribed to: ${topic}`);
+      }
+      
+      publishFabric.publish(topic, data).catch(err => {
+        pushLog(`Publish error: ${err.message}`);
+      }).finally(() => {
+        // Clean up temporary fabric
+        if (publishFabric !== fabric) {
+          publishFabric.disconnect?.();
         }
       });
       
-      unsubscribeFunctions.set(topic, unsub);
-      subscribedTopics.value.push(topic);
-      pushLog(`Auto-subscribed to: ${topic}`);
-    }
-    
-    fabric.publish(topic, data).catch(err => {
-      pushLog(`Publish error: ${err.message}`);
+      const roomLabel = targetRoom === roomId.value ? 'current room' : `room ${targetRoom.substring(0, 12)}...`;
+      pushLog(`Publishing to topic: ${topic} (${roomLabel})`);
     });
-    pushLog(`Publishing to topic: ${topic}`);
   } catch (err) {
     pushLog('Invalid JSON: ' + err.message);
   }
@@ -1269,6 +1396,7 @@ function logout() {
   userPlan.value = 'free';
   isFreeTier.value = false;
   apiKeys.value = [];
+  appIds.value = [];
   signInEmail.value = '';
   signInPassword.value = '';
   messages.value = [];
