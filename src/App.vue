@@ -921,7 +921,6 @@ async function signInWithEmail() {
     sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
     localStorage.setItem('bitfabric-email', authData.email);
     localStorage.setItem('bitfabric-password-hash', passwordHash);
-    roomId.value = authData.sessionKey || '';
     sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
     authApiKey.value = authData.sessionKey || '';
     accountId.value = authData.accountId || '';
@@ -936,12 +935,22 @@ async function signInWithEmail() {
         }
       });
       if (response.ok) {
-        apiKeys.value = (await response.json()).keys || [];
+        const keysData = await response.json();
+        apiKeys.value = keysData.keys || [];
+        // Use the default key as the room ID (not the session key)
+        const defaultKey = apiKeys.value.find(k => k.key_id === 'default');
+        if (defaultKey) {
+          roomId.value = defaultKey.value;
+        }
       } else if (authData.defaultKey) {
         apiKeys.value = [authData.defaultKey];
+        roomId.value = authData.defaultKey.value;
       }
     } catch {
-      if (authData.defaultKey) apiKeys.value = [authData.defaultKey];
+      if (authData.defaultKey) {
+        apiKeys.value = [authData.defaultKey];
+        roomId.value = authData.defaultKey.value;
+      }
     }
 
     connect();
