@@ -198,7 +198,7 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
       kinds: [1],
       '#t': [state.room],
       since: filterSince,
-      limit: 50,
+      limit: since ? 5000 : 50,
     };
     if (until) filter.until = until;
 
@@ -226,7 +226,7 @@ export function createNostrClient({ relayUrl, room, onPayload, onState, onNotice
     const filter = {
       kinds: [1],
       '#t': [topic],
-      limit: 50,
+      limit: since ? 5000 : 50,
     };
     if (since) filter.since = since;
     if (until) filter.until = until;

@@ -58,6 +58,10 @@ export class PubSubTransport {
     this.seenMessages = new Set();
     this.maxSeenMessages = 1000;
 
+    // Relay status tracking
+    this.relayStatus = new Map(); // relayUrl -> 'connecting' | 'connected' | 'failed'
+    this.onRelayStatusChange = null; // callback for UI updates
+
     // Stats
     this.stats = {
       transport1: { published: 0, received: 0 },
@@ -76,44 +80,49 @@ export class PubSubTransport {
    * Initialize transports
    */
   async init() {
-
-
-    // Initialize Nostr first to get peer ID
-    await this.initNostr();
-
-    // Ensure we have a peer ID
-    if (!this.peerId) {
-      throw new Error('Failed to initialize Nostr relays - no peer ID obtained');
-    }
+    // Initialize Nostr NON-BLOCKING - fire and forget
+    // This allows connection to complete faster
+    this.initNostr().catch(err => {
+      // Silently handle - relays will keep trying in background
+    });
 
     // Initialize Gun secondary transport
     await this.initGun();
 
+    // Generate peer ID if we don't have one from Nostr yet
+    if (!this.peerId) {
+      this.peerId = this.generatePeerId();
+    }
+
     return this.peerId;
+  }
+
+  generatePeerId() {
+    return 'peer-' + Math.random().toString(36).substring(2, 11);
   }
 
   /**
    * Initialize network relays - connect to all primaries for redundancy
    */
   async initNostr() {
-    // Try primary relays first (all concurrently)
+    // Try primary relays first (all concurrently) - 1.5 second timeout for speed
     await Promise.allSettled(
       this.primaryRelays.map(relayUrl =>
         Promise.race([
           this.initNostrRelay(relayUrl),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500))
         ])
       )
     );
 
-    // If no primary relay connected, try fallbacks concurrently
+    // If no primary relay connected, try fallbacks concurrently - 1 second timeout
     if (this.nostrClients.length === 0) {
       const fallbackRelays = this.nostrRelays.filter(r => !this.primaryRelays.includes(r));
       await Promise.allSettled(
         fallbackRelays.map(relayUrl =>
           Promise.race([
             this.initNostrRelay(relayUrl),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000))
           ])
         )
       );
@@ -125,6 +134,9 @@ export class PubSubTransport {
    */
   async initNostrRelay(relayUrl) {
     try {
+      this.relayStatus.set(relayUrl, 'connecting');
+      if (this.onRelayStatusChange) this.onRelayStatusChange();
+
       const client = createNostrClient({
         relayUrl,
         room: this.channel,
@@ -150,6 +162,8 @@ export class PubSubTransport {
         onState: (state) => {
           // Relay state changes (connecting/connected/error)
           if (state === 'connected') {
+            this.relayStatus.set(relayUrl, 'connected');
+            if (this.onRelayStatusChange) this.onRelayStatusChange();
             // Re-subscribe to all active topics to fetch last messages
             this.subscriptions.forEach((_, topic) => {
               try {
@@ -174,6 +188,8 @@ export class PubSubTransport {
       }
 
     } catch (err) {
+      this.relayStatus.set(relayUrl, 'failed');
+      if (this.onRelayStatusChange) this.onRelayStatusChange();
       // Silently handle connection failures - no console spam
     }
   }
@@ -343,6 +359,14 @@ export class PubSubTransport {
         try { callback(cachedMessage); } catch (err) { }
       });
     }
+
+    // Also trigger wildcard subscriptions
+    if (this.subscriptions.has('*')) {
+      const wildcardCallbacks = this.subscriptions.get('*');
+      wildcardCallbacks.forEach(callback => {
+        try { callback(cachedMessage); } catch (err) { }
+      });
+    }
   }
 
   /**
@@ -361,7 +385,9 @@ export class PubSubTransport {
       this.nostrClients.forEach(client => {
         try {
           if (client && typeof client.subscribeTopic === 'function') {
-            client.subscribeTopic(topic);
+            if (topic !== '*') {
+              client.subscribeTopic(topic);
+            }
           }
         } catch (err) { }
       });

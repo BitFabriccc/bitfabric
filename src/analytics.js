@@ -14,6 +14,7 @@ let seenPeers = new Set();
 const seenMessageIds = new Set();
 let recentActivity = [];
 const MAX_ACTIVITY = 10;
+let topicMessageCounts = {}; // Track actual message counts per topic
 
 // Time series data (last 5 minutes)
 const timeSeriesLabels = Array.from({ length: 30 }, (_, i) => {
@@ -163,19 +164,12 @@ const doughnutChart = new Chart(ctxDoughnut, {
 });
 
 function updateDoughnut() {
-    const topicsArr = Array.from(activeTopics);
-    // Tally up messages per topic (just a rough estimate based on recent activity, or evenly split for now if zero)
-    let topicCounts = {};
-    recentActivity.forEach(msg => {
-        topicCounts[msg.topic] = (topicCounts[msg.topic] || 0) + 1;
-    });
-
-    const sorted = Object.entries(topicCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const sorted = Object.entries(topicMessageCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
     if (sorted.length > 0) {
         doughnutChart.data.labels = sorted.map(s => s[0]);
         doughnutChart.data.datasets[0].data = sorted.map(s => s[1]);
-        elDoughnutSubtext.textContent = `Tracking ${activeTopics.size} active topics in real-time`;
+        elDoughnutSubtext.textContent = `Tracking ${activeTopics.size} active topic${activeTopics.size !== 1 ? 's' : ''} in real-time`;
     } else {
         doughnutChart.data.labels = ['Waiting for traffic...'];
         doughnutChart.data.datasets[0].data = [1];
@@ -226,9 +220,9 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
             elFeedStatus.textContent = `Historical: ${new Date(sinceTimestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`;
             elFeedStatus.style.color = '#6366f1';
 
-            // Re-scale the chart labels to represent a 1-hour window (30 blocks = 2 min each)
+            // Re-scale the chart labels to represent a 24-hour window (30 blocks = 48 min each)
             mainChart.data.labels = Array.from({ length: 30 }, (_, i) => {
-                const step = 3600000 / 30;
+                const step = 86400000 / 30; // 24 hours divided into 30 buckets
                 const d = new Date(sinceTimestamp + (i * step));
                 return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
             });
@@ -269,7 +263,10 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
             totalMessages++;
             totalBytes += JSON.stringify(msg).length;
 
-            if (msg.topic) activeTopics.add(msg.topic);
+            if (msg.topic) {
+                activeTopics.add(msg.topic);
+                topicMessageCounts[msg.topic] = (topicMessageCounts[msg.topic] || 0) + 1;
+            }
             if (msg.from) seenPeers.add(msg.from);
 
             const isGlobal = msg.topic === selectedRoomId;
@@ -286,8 +283,8 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
                     }
                 }
             } else {
-                // Bucket into the correct time slot for the historical 1-hour window
-                const bucketSpan = 3600000 / 30;
+                // Bucket into the correct time slot for the historical 24-hour window
+                const bucketSpan = 86400000 / 30; // 24 hours / 30 buckets
                 const offset = msg.timestamp - sinceTimestamp;
                 const bucketIdx = Math.max(0, Math.min(29, Math.floor(offset / bucketSpan)));
                 if (!isNaN(bucketIdx)) {
@@ -324,6 +321,7 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
             totalBytes += JSON.stringify(data).length;
             currentSecPubs++;
             activeTopics.add(topic);
+            topicMessageCounts[topic] = (topicMessageCounts[topic] || 0) + 1;
 
             recentActivity.unshift({
                 type: 'PUBLISH',
@@ -344,15 +342,8 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
             return origPublish(topic, data);
         };
 
-        // Subscribe to common global topics to seed metrics if using global tier
-        if (selectedRoomId === 'bitfabric-global-tier') {
-            fabric.subscribe('bitfabric-global-tier', trackMessage);
-            fabric.subscribe('general-support', trackMessage);
-            fabric.subscribe('events', trackMessage);
-        } else {
-            // Unconditionally catch all wildcard incoming for isolated App IDs
-            fabric.subscribe('*', trackMessage);
-        }
+        // Subscribe to wildcard to capture ALL topics including 'events'
+        fabric.subscribe('*', trackMessage);
 
     } catch (err) {
         elFeedStatus.textContent = 'Connection Failed';
@@ -360,6 +351,70 @@ async function initNetwork(sinceTimestamp = null, untilTimestamp = null) {
         console.error('Failed to initialize BitFabric Analytics:', err);
     }
 }
+
+// Load the keys if authenticated before connecting
+async function boot() {
+    // Try both localStorage (persistent) and sessionStorage (temp)
+    let authEmail = localStorage.getItem('bitfabric-email') || sessionStorage.getItem('bitfabric-email');
+    let authPasswordHash = localStorage.getItem('bitfabric-password-hash') || sessionStorage.getItem('bitfabric-password-hash');
+    
+    console.log('[Analytics] Boot: email=' + (authEmail ? authEmail.substring(0, 8) + '...' : 'none') + ', hash=' + (authPasswordHash ? 'yes' : 'no'));
+    
+    const elAppIdFilter = document.getElementById('app-id-filter');
+
+    if (authEmail && authPasswordHash) {
+        try {
+            console.log('[Analytics] Fetching Keys and App IDs...');
+            const [appRes, keyRes] = await Promise.all([
+                fetch(`/api/app-ids?email=${encodeURIComponent(authEmail)}`, {
+                    headers: { 'x-bitfabric-password-hash': authPasswordHash }
+                }),
+                fetch(`/api/keys?email=${encodeURIComponent(authEmail)}`, {
+                    headers: { 'x-bitfabric-password-hash': authPasswordHash }
+                })
+            ]);
+
+            if (keyRes.ok) {
+                const keyData = await keyRes.json();
+                if (keyData.keys && keyData.keys.length > 0) {
+                    // Add API keys to the dropdown
+                    for (let key of keyData.keys) {
+                        const opt = document.createElement('option');
+                        opt.value = key.value; // The actual API key string is the room ID
+                        opt.textContent = `API Key: ${key.name || 'Default'} (${key.value.substring(0, 8)}...)`;
+                        opt.style.background = 'var(--bg-dark)';
+                        elAppIdFilter.appendChild(opt);
+                    }
+                    // Set the default to the first API key (usually 'default')
+                    elAppIdFilter.value = keyData.keys[0].value;
+                }
+            }
+
+            if (appRes.ok) {
+                const data = await appRes.json();
+                console.log('[Analytics] Got App IDs:', data.appIds?.length || 0);
+                if (data.appIds && data.appIds.length > 0) {
+                    for (let app of data.appIds) {
+                        const opt = document.createElement('option');
+                        opt.value = app.app_id;
+                        opt.textContent = `App ID: ${app.name || 'Unnamed'} (${app.app_id.substring(0, 8)}...)`;
+                        opt.style.background = 'var(--bg-dark)';
+                        elAppIdFilter.appendChild(opt);
+                    }
+                }
+            } else {
+                console.warn('[Analytics] Failed to fetch App IDs:', appRes.status);
+            }
+        } catch (e) {
+            console.error('[Analytics] Error loading keys/App IDs:', e);
+        }
+    } else {
+        console.log('[Analytics] No session found - starting guest mode');
+    }
+    initNetwork();
+}
+
+boot();
 
 // History Date Picker
 const elHistoryDate = document.getElementById('history-date');
@@ -373,10 +428,10 @@ elHistoryDate.addEventListener('change', async (e) => {
     const selectedDateStr = e.target.value;
     if (!selectedDateStr) return;
 
-    // Convert to Unix timestamps (1-hour window from the selected time)
+    // Convert to Unix timestamps (24-hour window from the selected time)
     const selectedDate = new Date(selectedDateStr);
     const startWindow = selectedDate.getTime();
-    const endWindow = startWindow + 3600000; // 1 hour
+    const endWindow = startWindow + 86400000; // 24 hours (1 day)
 
     // Clear State
     totalMessages = 0;
@@ -385,6 +440,7 @@ elHistoryDate.addEventListener('change', async (e) => {
     seenPeers.clear();
     seenMessageIds.clear();
     recentActivity = [];
+    topicMessageCounts = {};
     pubData.fill(0);
     subData.fill(0);
     mainChart.update();
@@ -405,6 +461,7 @@ elAppIdFilter.addEventListener('change', async () => {
     seenPeers.clear();
     seenMessageIds.clear();
     recentActivity = [];
+    topicMessageCounts = {};
     pubData.fill(0);
     subData.fill(0);
     mainChart.update();
@@ -418,35 +475,5 @@ elAppIdFilter.addEventListener('change', async () => {
     }
     const selectedDate = new Date(selectedDateStr);
     const startWindow = selectedDate.getTime();
-    await initNetwork(startWindow, startWindow + 3600000);
+    await initNetwork(startWindow, startWindow + 86400000); // 24 hours
 });
-
-// Load the keys if authenticated before connecting
-async function boot() {
-    const authEmail = sessionStorage.getItem('bitfabric-email');
-    const authPasswordHash = sessionStorage.getItem('bitfabric-password-hash');
-    if (authEmail && authPasswordHash) {
-        try {
-            const res = await fetch(`/api/app-ids?email=${encodeURIComponent(authEmail)}`, {
-                headers: { 'x-bitfabric-password-hash': authPasswordHash }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.appIds && data.appIds.length > 0) {
-                    for (let app of data.appIds) {
-                        const opt = document.createElement('option');
-                        opt.value = app.app_id;
-                        opt.textContent = `${app.name || 'App ID'} (${app.app_id.substring(0, 8)}...)`;
-                        opt.style.background = 'var(--bg-dark)';
-                        elAppIdFilter.appendChild(opt);
-                    }
-                }
-            }
-        } catch (e) {
-            console.error('Failed to load App IDs', e);
-        }
-    }
-    initNetwork();
-}
-
-boot();

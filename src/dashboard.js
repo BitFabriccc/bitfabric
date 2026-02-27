@@ -1,5 +1,5 @@
-const authEmail = sessionStorage.getItem('bitfabric-email');
-const authPasswordHash = sessionStorage.getItem('bitfabric-password-hash');
+const authEmail = localStorage.getItem('bitfabric-email') || sessionStorage.getItem('bitfabric-email');
+const authPasswordHash = localStorage.getItem('bitfabric-password-hash') || sessionStorage.getItem('bitfabric-password-hash');
 let appList = [];
 let keyList = [];
 

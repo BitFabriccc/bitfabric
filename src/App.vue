@@ -246,6 +246,21 @@
             </span>
             <span class="tag">Protocol: P2P</span>
           </div>
+          
+          <!-- Relay Status -->
+          <div v-if="relayStatusList.length > 0" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">🔗 Relay Status</div>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 4px;">
+              <div v-for="(relay, idx) in relayStatusList" :key="idx" style="font-size: 11px; display: flex; align-items: center; gap: 6px;">
+                <span :style="{ 
+                  color: relay.status === 'connected' ? '#10b981' : relay.status === 'connecting' ? '#f59e0b' : '#ef4444'
+                }">
+                  {{ relay.status === 'connected' ? '✓' : relay.status === 'connecting' ? '⟳' : '✗' }}
+                </span>
+                <span style="color: var(--text-muted);">{{ relay.url.replace('wss://', '').replace(/\/.+/, '') }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="card">
@@ -426,25 +441,43 @@ watch(isEmailAuthed, (authed) => {
   }
 });
 
-// Load user data from sessionStorage and fetch keys from D1
+// Load user data from localStorage and fetch keys from D1
 async function initializeFromStorage() {
-  const storedEmail = sessionStorage.getItem('bitfabric-email');
-  const storedPasswordHash = sessionStorage.getItem('bitfabric-password-hash');
+  // Try localStorage first (persistent), then sessionStorage (temporary)
+  let storedEmail = localStorage.getItem('bitfabric-email') || sessionStorage.getItem('bitfabric-email');
+  let storedPasswordHash = localStorage.getItem('bitfabric-password-hash') || sessionStorage.getItem('bitfabric-password-hash');
+  
+  console.log('[App] Init from storage: email=' + (storedEmail ? 'yes' : 'no') + ', hash=' + (storedPasswordHash ? 'yes' : 'no'));
+  
   if (!storedEmail) return;
   if (!storedPasswordHash) return;
 
   // Always re-hydrate session from the server (D1 is source of truth)
   try {
+    console.log('[App] Re-authenticating with server...');
     const authResponse = await fetch('/api/authenticate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: storedEmail, passwordHash: storedPasswordHash })
     });
 
-    if (!authResponse.ok) return;
+    if (!authResponse.ok) {
+      console.warn('[App] Re-auth failed:', authResponse.status);
+      return;
+    }
     const authData = await authResponse.json();
-    if (!authData?.authenticated) return;
+    if (!authData?.authenticated) {
+      console.warn('[App] Server denied auth');
+      return;
+    }
 
+    console.log('[App] Session restored:', authData.email);
+    
+    // Keep in localStorage for persistence
+    localStorage.setItem('bitfabric-email', authData.email);
+    localStorage.setItem('bitfabric-password-hash', storedPasswordHash);
+    
+    // Also set sessionStorage for current session
     sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
     sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
     sessionStorage.setItem('bitfabric-password-hash', storedPasswordHash);
@@ -475,6 +508,7 @@ async function initializeFromStorage() {
        startRelayPolling(authData.email);
     }
   } catch (error) {
+    console.error('[App] Init error:', error);
     // If auth fails, keep user signed out
   }
 }
@@ -769,6 +803,7 @@ const statusLabel = computed(() => {
 
 const isConnecting = computed(() => status.value === 'connecting');
 const isReady = computed(() => status.value === 'ready');
+const relayStatusList = ref([]);
 
 // Clear any API key from URL for security
 if (window.location.search.includes('apikey') || window.location.search.includes('room')) {
@@ -810,8 +845,8 @@ if (emailParam) {
         // Auto-authenticate whitelisted user
         sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
         sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
-        sessionStorage.setItem('bitfabric-email', authData.email);
-        sessionStorage.setItem('bitfabric-password-hash', storedPasswordHash);
+        localStorage.setItem('bitfabric-email', authData.email);
+        localStorage.setItem('bitfabric-password-hash', storedPasswordHash);
         roomId.value = authData.sessionKey || '';
     authApiKey.value = authData.sessionKey || '';
     accountId.value = authData.accountId || '';
@@ -884,8 +919,8 @@ async function signInWithEmail() {
     }
 
     sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
-    sessionStorage.setItem('bitfabric-email', authData.email);
-    sessionStorage.setItem('bitfabric-password-hash', passwordHash);
+    localStorage.setItem('bitfabric-email', authData.email);
+    localStorage.setItem('bitfabric-password-hash', passwordHash);
     roomId.value = authData.sessionKey || '';
     sessionStorage.setItem('bitfabric-auth-api-key', authData.sessionKey);
     authApiKey.value = authData.sessionKey || '';
@@ -930,7 +965,7 @@ async function connect() {
     startFreeSession();
   }
 
-  // Server-side validation: skip for free tier OR forum mode
+  // Server-side validation: only for unauthenticated users with manual room IDs
   if (!isFreeTier.value && !isEmailAuthed.value && !isForumVisible.value) {
     await validateManualKey(roomId.value);
     if (!isValidated.value) {
@@ -938,31 +973,9 @@ async function connect() {
       status.value = 'error';
       return;
     }
-  } else if (!isFreeTier.value && isEmailAuthed.value && !isForumVisible.value) {
-    try {
-      const validateResp = await fetch('/api/validate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail.value, apiKey: roomId.value })
-      });
-      if (!validateResp.ok) {
-        const data = await validateResp.json().catch(() => ({}));
-        pushLog(data?.error || 'Invalid API key');
-        status.value = 'error';
-        return;
-      }
-      const validateData = await validateResp.json().catch(() => ({}));
-      if (!validateData?.valid) {
-        pushLog(validateData?.error || 'Invalid API key');
-        status.value = 'error';
-        return;
-      }
-    } catch (e) {
-      pushLog('Unable to validate API key');
-      status.value = 'error';
-      return;
-    }
   }
+  // Logged-in users use their sessionKey without validation
+  // Forum users need no validation
 
   await disconnect();
   
@@ -983,7 +996,30 @@ async function connect() {
       nostrRelays
     });
 
-    const peerIdValue = await fabric.init();
+    // Set up relay status callback for UI updates
+    if (fabric.transport) {
+      fabric.transport.onRelayStatusChange = () => {
+        relayStatusList.value = Array.from(fabric.transport.relayStatus.entries()).map(([url, status]) => ({ url, status }));
+      };
+    }
+
+    pushLog('Initializing network…');
+    
+    // Add timeout - if init takes more than 10 seconds, fail gracefully
+    const initPromise = fabric.init();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Network initialization timeout - continuing with partial connection')), 10000)
+    );
+    
+    let peerIdValue;
+    try {
+      peerIdValue = await Promise.race([initPromise, timeoutPromise]);
+    } catch (timeoutErr) {
+      // Even if timeout, we can continue - fabric may have partial connection
+      pushLog('⚠ Network init timed out, continuing…');
+      peerIdValue = fabric.getPeerId?.() || 'peer-' + Math.random().toString(36).slice(2, 8);
+    }
+    
     peerId.value = peerIdValue;
     pushLog(`Client ID: ${peerIdValue}`);
 

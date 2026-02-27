@@ -404,9 +404,9 @@
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
-                    Active API Keys
+                    Active Peers
                 </div>
-                <div class="stat-value" id="stat-topics">1 / &infin;</div>
+                <div class="stat-value" id="stat-peers">0</div>
                 <div class="stat-trend"
                     style="margin-left:8px; background: rgba(99, 102, 241, 0.1); color: var(--primary);">
                     <a href="/dashboard.html" style="color: inherit; text-decoration: none;">Manage Keys ↗</a>
@@ -448,23 +448,22 @@
                     <canvas id="mainChart"></canvas>
                 </div>
             </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Message Distribution</h3>
+                </div>
+                <div class="doughnut-container">
+                    <canvas id="doughnutChart"></canvas>
+                </div>
+                <div style="text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted);"
+                    id="doughnut-subtext">
+                    Initializing streams...
+                </div>
+            </div>
         </div>
 
-        <div class="chart-card">
-            <div class="chart-header">
-                <h3>Message Distribution</h3>
-            </div>
-            <div class="doughnut-container">
-                <canvas id="doughnutChart"></canvas>
-            </div>
-            <div style="text-align: center; margin-top: 20px; font-size: 13px; color: var(--text-muted);"
-                id="doughnut-subtext">
-                Initializing streams...
-            </div>
-        </div>
-    </div>
-
-    <div class="activity-card">
+        <div class="activity-card">
         <div class="chart-header">
             <h3>Recent API Activity (Sample)</h3>
         </div>
@@ -483,10 +482,10 @@
                 </tbody>
             </table>
         </div>
-    </div>
+        </div>
     </div>
 
-    <script type="module" src="/src/analytics.js"></script>
+    <script type="module" src="/src/analytics.js?v=20260226-2"></script>
 </body>
 
 </html>
