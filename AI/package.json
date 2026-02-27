@@ -1,0 +1,21 @@
+{
+  "name": "brainfuct-ai",
+  "version": "1.0.0",
+  "description": "AI integration using BitFabric messaging",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "bitfabric": "file:../NPM/bitfabric"
+  },
+  "keywords": [
+    "bitfabric",
+    "ai",
+    "messaging"
+  ],
+  "author": "",
+  "license": "MIT"
+}
