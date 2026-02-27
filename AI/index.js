@@ -18,10 +18,11 @@ console.log(`App ID: ${APP_ID}`);
 console.log(`Brainfuct: ${BRAINFUCT_REPO}`);
 console.log('');
 
-// Initialize BitFabric with API key as room ID
+// Initialize BitFabric with APP ID as room (not API key)
+// This way it listens on the same channel as clients publishing to the App ID
 const fabric = new PubSubFabric({
-  roomId: API_KEY,
-  appId: APP_ID
+  roomId: APP_ID,  // Use App ID as the room
+  peerId: `ai-worker-${Date.now()}`
 });
 
 // Connect and listen
