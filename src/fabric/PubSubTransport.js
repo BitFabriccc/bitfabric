@@ -20,7 +20,7 @@ export class PubSubTransport {
     this.peerId = config.peerId;
 
     // Use API key as the channel (isolated per user)
-    this.channel = this.roomId || 'default';
+    this.channel = this.roomId || 'bitfabric-global-tier';
 
     // Transport clients
     this.nostrClients = [];

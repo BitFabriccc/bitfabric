@@ -9,7 +9,7 @@ import { PubSubTransport } from './PubSubTransport.js';
 
 export class PubSubFabric {
   constructor(config = {}) {
-    this.roomId = config.roomId || 'default';
+    this.roomId = config.roomId || 'bitfabric-global-tier';
     this.peerId = config.peerId || null;
 
     // Transport layer (Gun + Nostr) - ALL data flows through these
