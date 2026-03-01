@@ -9,6 +9,7 @@ function isPremiumEmail(email) {
   // Server-side premium whitelist (source of truth)
   const PREMIUM_WHITELIST = [
     'draeder@gmail.com',
+    'danraeder@gmail.com',
     'daniel@bitfabric.cc'
   ];
   return PREMIUM_WHITELIST.includes(email);
