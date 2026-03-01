@@ -1,0 +1,42 @@
+{
+  "name": "bitfabric",
+  "version": "0.1.0",
+  "description": "Direct pub/sub messaging over Gun + Nostr",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src/fabric",
+    "src/nostr",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "node ./tools/build.mjs",
+    "build:browser": "node ./tools/build-browser.mjs",
+    "test:smoke": "npm run build && node ./examples/node-smoke.mjs",
+    "test:node:sub": "npm run build && node ./examples/node-subscribe.mjs",
+    "test:node:pub": "npm run build && node ./examples/node-publish.mjs",
+    "dev": "npm run examples:serve",
+    "examples:serve": "npm run build && npm run build:browser && node ./tools/serve-examples.mjs",
+    "prepublishOnly": "npm run build && npm run build:browser"
+  },
+  "dependencies": {
+    "gun": "^0.2020.1235",
+    "nostr-tools": "^2.7.0",
+    "unsea": "^1.1.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.2"
+  }
+}

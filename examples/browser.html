@@ -1,0 +1,1350 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BitFabric • P2P Pub/Sub Test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1ed2af;
+      --primary-light: #11b48f;
+      --primary-bg: rgba(30, 210, 175, 0.12);
+      --accent: #4e5cc4;
+      --bg: #0d1117;
+      --panel: rgba(255, 255, 255, 0.04);
+      --card-bg: rgba(255, 255, 255, 0.04);
+      --text: #e6edf3;
+      --text-secondary: #9da7b3;
+      --text-muted: #9da7b3;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.06);
+      --success: #48bb78;
+      --success-bg: rgba(72, 187, 120, 0.1);
+      --error: #ff6b6b;
+      --warning: #f2a516;
+      --radius: 18px;
+      --radius-sm: 12px;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(circle at 50% 20%, rgba(0, 0, 0, 0.5), transparent 75%);
+      z-index: 0;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    .card-header {
+      font-family: 'Space Grotesk', sans-serif !important;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: radial-gradient(circle at 20% 20%, rgba(30, 210, 175, 0.12), transparent 35%),
+        radial-gradient(circle at 80% 0%, rgba(242, 165, 22, 0.12), transparent 30%),
+        var(--bg);
+      padding: 40px 24px;
+      text-align: center;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.5px;
+      margin-top: 15px;
+    }
+
+    .header .subtitle {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      margin-top: 8px;
+    }
+
+    .logo-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 5px;
+    }
+
+    .main-logo {
+      height: 80px;
+      width: auto;
+      filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.3));
+    }
+
+    .header .badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, .15);
+      border: 1px solid rgba(255, 255, 255, .2);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: .72rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, .9);
+      margin-top: 8px;
+      position: relative;
+      z-index: 1;
+      backdrop-filter: blur(8px);
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1120px;
+      width: 100%;
+      margin: 20px auto 0;
+      padding: 0 20px 40px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    .card-header .icon {
+      font-size: 1.1rem;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    .card+.card {
+      margin-top: 16px;
+    }
+
+    /* ── Forms ── */
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: .88rem;
+      color: var(--text);
+      background: var(--bg);
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(30, 210, 175, 0.1);
+    }
+
+    textarea {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem;
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .input-hint {
+      font-size: .72rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* ── Buttons ── */
+    button {
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      border: none;
+      font-size: .88rem;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #13b892);
+      color: #041510;
+      box-shadow: 0 4px 12px rgba(30, 210, 175, 0.2);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(30, 210, 175, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+      padding: 8px 14px;
+    }
+
+    .btn-outline:hover {
+      background: var(--primary-bg);
+    }
+
+    button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn-full {
+      width: 100%;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .btn-row>button {
+      flex: 1;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      margin-bottom: 16px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-align: center;
+      transition: all .15s;
+    }
+
+    .tab.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 2px 8px rgba(124, 58, 237, .25);
+    }
+
+    .tab:hover:not(.active) {
+      color: var(--text);
+    }
+
+    /* ── Status ── */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: .72rem;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .status-idle {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-secondary);
+    }
+
+    .status-connecting {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--warning);
+      border-color: rgba(242, 165, 22, 0.3);
+    }
+
+    .status-connected {
+      background: linear-gradient(135deg, var(--primary), #13b892);
+      color: white;
+      box-shadow: 0 4px 12px rgba(30, 210, 175, 0.2);
+    }
+
+    .status-error {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--error);
+      border-color: rgba(255, 107, 107, 0.3);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .status-idle .status-dot {
+      background: #94a3b8;
+    }
+
+    .status-connecting .status-dot {
+      background: #f59e0b;
+      animation: pulse 1s infinite;
+    }
+
+    .status-connected .status-dot {
+      background: #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    .status-error .status-dot {
+      background: #ef4444;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: .4;
+      }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ── Stats Grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stat-card {
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      text-align: center;
+      border: 1px solid var(--border-light);
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: .7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      font-size: .78rem;
+      color: var(--text-secondary);
+    }
+
+    .meta-row+.meta-row {
+      border-top: 1px solid var(--border-light);
+    }
+
+    .meta-value {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .meta-value.active {
+      color: var(--success);
+    }
+
+    /* ── Topic Data Feed ── */
+    .feed {
+      min-height: 200px;
+      max-height: 360px;
+      overflow-y: auto;
+      padding: 4px;
+    }
+
+    .feed-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: .85rem;
+      text-align: center;
+    }
+
+    .feed-empty-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      opacity: .4;
+    }
+
+    .feed-item {
+      background: var(--bg);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      transition: border-color .15s;
+    }
+
+    .feed-item:hover {
+      border-color: var(--primary-light);
+    }
+
+    .feed-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: .72rem;
+      color: var(--text-muted);
+    }
+
+    .feed-topic-pill {
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-bg);
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-size: .72rem;
+    }
+
+    .feed-item-data {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .78rem;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 8px;
+      padding: 10px 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      border: 1px solid var(--border-light);
+      color: var(--text);
+    }
+
+    /* ── Console ── */
+    .console {
+      background: #0f172a;
+      color: #cbd5e1;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .72rem;
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+
+
+    .console-ts {
+      color: var(--primary-light);
+      margin-right: 4px;
+    }
+
+    /* ── Sub pills ── */
+    .sub-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .sub-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--primary-bg);
+      border: 1px solid rgba(124, 58, 237, .15);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .sub-pill-x {
+      cursor: pointer;
+      opacity: .5;
+      font-size: .65rem;
+      margin-left: 2px;
+    }
+
+    .sub-pill-x:hover {
+      opacity: 1;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: auto;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .78rem;
+      color: var(--text-muted);
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* ── Info hint ── */
+    .hint-text {
+      font-size: .82rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .adv-toggle {
+      margin-top: 14px;
+      font-size: .75rem;
+      cursor: pointer;
+      color: var(--primary);
+      text-align: center;
+      user-select: none;
+      font-weight: 600;
+    }
+
+    .delivery-hint {
+      background: var(--primary-bg);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: .78rem;
+      color: var(--text-secondary);
+      margin-top: 10px;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .delivery-hint strong {
+      color: var(--primary);
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <div class="logo-container">
+      <svg width="210" height="110" viewBox="0 0 420 220" xmlns="http://www.w3.org/2000/svg" class="main-logo">
+        <g transform="translate(210, 110)">
+          <!-- Outer indigo border -->
+          <ellipse cx="0" cy="0" rx="195" ry="95" fill="#4e5cc4" />
+          <!-- White middle border -->
+          <ellipse cx="0" cy="0" rx="188" ry="88" fill="white" />
+          <!-- Main green oval (Site accent) -->
+          <ellipse cx="0" cy="0" rx="180" ry="80" fill="#1ed2af" />
+          <!-- "BIT" Text -->
+          <text x="-15" y="16" font-family="'Space Grotesk', sans-serif" font-size="155" font-weight="700" fill="white"
+            stroke="white" stroke-width="6" paint-order="stroke fill" text-anchor="middle" dominant-baseline="middle"
+            style="font-style: italic; letter-spacing: -4px;" transform="skewX(-5)">BIT</text>
+        </g>
+      </svg>
+    </div>
+    <div class="badge">NPM Package Development</div>
+    <h1>BitFabric PubSub</h1>
+    <p class="subtitle">Distributed P2P messaging for the open web.</p>
+  </div>
+
+  <div class="container">
+    <div class="main-grid">
+
+      <!-- ═══ LEFT COLUMN ═══ -->
+      <div class="left-col">
+
+        <!-- Account -->
+        <div class="card">
+          <div class="card-header"><span class="icon">👤</span> Account</div>
+          <div class="card-body">
+            <div id="auth-logged-out">
+              <p class="hint-text">Sign in to use your managed fabric and API keys.</p>
+              <div class="form-group">
+                <label>Email</label>
+                <input id="loginEmail" placeholder="account@email.com" />
+              </div>
+              <div class="form-group">
+                <label>Password</label>
+                <input id="loginPass" type="password" placeholder="••••••••" />
+              </div>
+              <button id="signInBtn" class="btn-primary btn-full">Sign In</button>
+              <div style="margin-top:12px;text-align:center;font-size:.75rem;">
+                <a href="https://bitfabric.cc/signup" target="_blank"
+                  style="color:var(--primary);text-decoration:none;">Create Account</a>
+              </div>
+            </div>
+
+            <div id="auth-logged-in" class="hidden">
+              <div class="meta-row">
+                <span>Account</span>
+                <span class="meta-value" id="displayEmail">-</span>
+              </div>
+              <div class="meta-row">
+                <span>Plan</span>
+                <span class="meta-value" id="displayPlan">Starter</span>
+              </div>
+              <button id="signOutBtn" class="btn-secondary btn-full" style="margin-top:12px;">Sign Out</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connection -->
+        <div class="card">
+          <div class="card-header"><span class="icon">⚡</span> Connection</div>
+          <div class="card-body">
+            <div id="connection-controls">
+              <p class="hint-text" id="connHint">Connect instantly to the global P2P mesh.</p>
+
+              <div class="form-group">
+                <label>Room ID</label>
+                <input id="roomIdInput" placeholder="Using default room" />
+              </div>
+
+              <div class="btn-row">
+                <button id="connectBtn" class="btn-primary">Connect</button>
+                <button id="disconnectBtn" class="btn-secondary" disabled>Disconnect</button>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
+                <span id="statusPill" class="status-pill status-idle"><span class="status-dot"></span> Idle</span>
+                <span id="sessionLabel" style="font-size:.72rem;font-weight:600;color:var(--text-muted);">Free
+                  Session</span>
+              </div>
+            </div>
+
+            <div class="adv-toggle" id="advToggle">Advanced Options ▸</div>
+            <div id="advPanel" class="hidden"
+              style="margin-top:12px;border-top:1px solid var(--border-light);padding-top:12px;">
+              <div class="form-group">
+                <label>Custom Relays</label>
+                <textarea id="customRelays" rows="3" placeholder="wss://... or https://... (one per line)"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Publish -->
+        <div class="card">
+          <div class="card-header"><span class="icon">📤</span> Publish</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Topic</label>
+              <input id="pubTopic" placeholder="e.g. events" value="bitfabric-global-tier" />
+            </div>
+            <div class="form-group">
+              <label>Message Data (JSON)</label>
+              <textarea id="pubData">{"type":"test","value":42}</textarea>
+            </div>
+            <div class="delivery-hint">Delivery: <strong>Global P2P</strong></div>
+            <button id="publishBtn" class="btn-primary btn-full" disabled style="margin-top:10px;">Publish</button>
+            <p class="input-hint" style="margin-top:8px;text-align:center;">Messages are delivered globally through our
+              distributed network to all subscribers.</p>
+          </div>
+        </div>
+
+        <!-- Subscribe -->
+        <div class="card">
+          <div class="card-header"><span class="icon">📥</span> Subscribe</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Topic</label>
+              <div class="row">
+                <input id="subTopic" placeholder="e.g. events" value="bitfabric-global-tier" />
+                <button id="subscribeBtn" class="btn-outline" disabled>Subscribe</button>
+              </div>
+            </div>
+            <div id="subList" class="sub-list"></div>
+            <p id="subEmpty" class="input-hint" style="margin-top:4px;">No active subscriptions.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ RIGHT COLUMN ═══ -->
+      <div class="right-col" style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Active API Key -->
+        <div class="card">
+          <div class="card-header"><span class="icon">🔑</span> API Key</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Current Key</label>
+              <input id="activeKeyInput" placeholder="Optional: Enter API Key" />
+              <p class="input-hint" id="keySourceHint">Free session uses shared global topic.</p>
+            </div>
+            <div id="managedKeysList" class="hidden"
+              style="margin-top:12px;border-top:1px solid var(--border-light);padding-top:12px;">
+              <label
+                style="display:block;font-size:.7rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;">Your
+                Managed Keys</label>
+              <div id="keysContainer" style="display:flex;flex-direction:column;gap:8px;">
+                <!-- Keys injected here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PubSub Stats -->
+        <div class="card">
+          <div class="card-header"><span class="icon">📊</span> PubSub Stats</div>
+          <div class="card-body" style="padding:16px 20px;">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value" id="statPublished">0</div>
+                <div class="stat-label">Published</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="statReceived">0</div>
+                <div class="stat-label">Received</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="statTopics">0</div>
+                <div class="stat-label">Topics</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="statDelivered">0</div>
+                <div class="stat-label">Delivered</div>
+              </div>
+            </div>
+            <div style="margin-top:14px;">
+              <div class="meta-row"><span>Network</span><span class="meta-value" id="metaNetwork">Inactive</span></div>
+              <div class="meta-row"><span>Protocol</span><span class="meta-value">P2P</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Received Messages -->
+        <div class="card" style="flex:1;min-height:300px;">
+          <div class="card-header"><span class="icon">📡</span> Received Messages</div>
+          <div class="feed" id="feed">
+            <div class="feed-empty" id="feedEmpty">
+              <div class="feed-empty-icon">📡</div>
+              <div>No messages yet.<br>Subscribe to a topic to start receiving data.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Library (Persistent Messages) -->
+        <div class="card" style="flex:1;min-height:300px;">
+          <div class="card-header"><span class="icon">📚</span> Library</div>
+          <div class="feed" id="libraryFeed">
+            <div class="feed-empty" id="libraryEmpty">
+              <div class="feed-empty-icon">📚</div>
+              <div>No library items yet.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="card">
+          <div class="card-header"><span class="icon">🖥️</span> Logs</div>
+          <div class="card-body" style="padding:12px 16px;">
+            <div class="console" id="log"></div>
+            <div id="peerDisplay"
+              style="margin-top:10px;font-size:.7rem;font-family:'JetBrains Mono',monospace;color:var(--text-muted);">
+              Client ID: —</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>BitFabric v0.1.0</span>
+    <span>
+      <a href="https://bitfabric.cc" target="_blank">📚 Docs</a> ·
+      <a href="https://bitfabric.cc/#pricing" target="_blank">Pricing</a> ·
+      <a href="https://bitfabric.cc" target="_blank">Get Started</a>
+    </span>
+    <span>Enterprise solutions available</span>
+  </div>
+
+  <script src="/dist/bitfabric.iife.min.js"></script>
+  <script>
+    const { PubSubFabric } = window.BitFabric;
+
+    /* ── DOM ── */
+    const $ = id => document.getElementById(id);
+    const elLoginEmail = $('loginEmail'), elLoginPass = $('loginPass');
+    const elDisplayEmail = $('displayEmail'), elDisplayPlan = $('displayPlan');
+    const elActiveKeyInput = $('activeKeyInput'), elKeySourceHint = $('keySourceHint');
+    const elRoomIdInput = $('roomIdInput');
+    const elKeysContainer = $('keysContainer'), elManagedKeysList = $('managedKeysList');
+
+    const elPubTopic = $('pubTopic'), elPubData = $('pubData');
+    const elSubTopic = $('subTopic'), elSubList = $('subList'), elSubEmpty = $('subEmpty');
+    const elCustomRelays = $('customRelays');
+    const elLog = $('log'), elFeed = $('feed'), elFeedEmpty = $('feedEmpty');
+    const elLibrary = $('libraryFeed'), elLibraryEmpty = $('libraryEmpty');
+    const elStatusPill = $('statusPill'), elPeerDisplay = $('peerDisplay'), elSessionLabel = $('sessionLabel');
+    const elStatPublished = $('statPublished'), elStatReceived = $('statReceived');
+    const elStatTopics = $('statTopics'), elStatDelivered = $('statDelivered');
+    const elMetaNetwork = $('metaNetwork');
+
+    const btnConnect = $('connectBtn'), btnDisconnect = $('disconnectBtn');
+    const btnPublish = $('publishBtn'), btnSubscribe = $('subscribeBtn');
+    const btnSignIn = $('signInBtn'), btnSignOut = $('signOutBtn');
+
+    /* ── State ── */
+    let fabric = null;
+    let activeSubs = new Map();
+    let stats = { published: 0, received: 0, delivered: 0 };
+    let user = null; // { email, plan, keys: [] }
+    let selectedKey = null;
+    let isValidated = false;
+    const FREE_TOPIC = 'bitfabric-free-tier';
+
+    /* ── Auth ── */
+    async function signIn() {
+      const email = elLoginEmail.value.trim();
+      const password = elLoginPass.value.trim();
+      if (!email || !password) return alert('Email and Password required');
+
+      btnSignIn.disabled = true;
+      btnSignIn.textContent = 'Signing in...';
+
+      try {
+        const resp = await fetch('/api/authenticate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error || 'Authentication failed');
+        }
+
+        const data = await resp.json();
+        user = { email, plan: data.plan || 'Starter', keys: data.keys || [] };
+
+        // Persist session
+        sessionStorage.setItem('bf_auth_user', JSON.stringify(user));
+
+        updateAuthUI();
+        log(`Signed in as: ${email}`);
+      } catch (err) {
+        alert(err.message);
+        log(`Auth Error: ${err.message}`);
+      } finally {
+        btnSignIn.disabled = false;
+        btnSignIn.textContent = 'Sign In';
+      }
+    }
+
+    function signOut() {
+      user = null;
+      selectedKey = null;
+      sessionStorage.removeItem('bf_auth_user');
+      updateAuthUI();
+      log('Signed out');
+      if (fabric) btnDisconnect.click();
+    }
+
+    function updateAuthUI() {
+      const loggedIn = !!user;
+      $('auth-logged-out').classList.toggle('hidden', loggedIn);
+      $('auth-logged-in').classList.toggle('hidden', !loggedIn);
+
+      if (loggedIn) {
+        elDisplayEmail.textContent = user.email;
+        elDisplayPlan.textContent = user.plan;
+        elManagedKeysList.classList.remove('hidden');
+        isValidated = true; // Managed keys are trusted
+        renderKeys();
+      } else {
+        elManagedKeysList.classList.add('hidden');
+
+        // Only reset hints if the input is actually empty
+        if (!elActiveKeyInput.value.trim()) {
+          elKeySourceHint.innerHTML = 'Free session uses shared global topic.';
+          elSessionLabel.textContent = 'Free Session';
+          isValidated = false;
+        }
+
+        // Defaults for guests, but don't disable (allow testing)
+        if (!elPubTopic.value) elPubTopic.value = FREE_TOPIC;
+        if (!elSubTopic.value) elSubTopic.value = FREE_TOPIC;
+        elPubTopic.disabled = false;
+        elSubTopic.disabled = false;
+      }
+    }
+
+    function renderKeys() {
+      elKeysContainer.innerHTML = '';
+      if (!user || !user.keys) return;
+
+      user.keys.forEach(k => {
+        const div = document.createElement('div');
+        div.style = `
+          padding: 8px 12px;
+          background: var(--bg);
+          border: 1px solid ${selectedKey === k.key ? 'var(--primary)' : 'var(--border-light)'};
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          transition: all 0.2s;
+        `;
+        div.onclick = () => selectKey(k.key);
+
+        div.innerHTML = `
+          <div style="font-size: 0.8rem;">
+            <div style="font-weight: 600; color: var(--text);">${k.name || 'Default Key'}</div>
+            <code style="font-size: 0.7rem; color: var(--primary-light); opacity: 0.8;">${k.key.slice(0, 8)}...</code>
+          </div>
+          ${selectedKey === k.key ? '<span style="color:var(--primary); font-size: 0.8rem;">✓</span>' : ''}
+        `;
+        elKeysContainer.appendChild(div);
+      });
+    }
+
+    function selectKey(key) {
+      selectedKey = key;
+      isValidated = true;
+      elActiveKeyInput.value = key;
+      elKeySourceHint.innerHTML = '<span style="color:var(--primary);">✓ Managed session active (Validated).</span>';
+      elSessionLabel.textContent = 'Managed Session';
+      renderKeys();
+      log(`Selected key: ${key.slice(0, 8)}...`);
+    }
+
+    let valTimeout;
+    elActiveKeyInput.addEventListener('input', () => {
+      const val = elActiveKeyInput.value.trim();
+      selectedKey = val || null;
+
+      clearTimeout(valTimeout);
+      if (val) {
+        elKeySourceHint.innerHTML = 'Validating key…';
+        valTimeout = setTimeout(() => validateManualKey(val), 800);
+      } else {
+        isValidated = false;
+        elKeySourceHint.innerHTML = 'Free session uses shared global topic.';
+        elSessionLabel.textContent = 'Free Session';
+      }
+    });
+
+    async function validateManualKey(key) {
+      try {
+        const resp = await fetch('/api/validate-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: key })
+        });
+        const data = await resp.json();
+        if (data.valid) {
+          isValidated = true;
+          elKeySourceHint.innerHTML = '<span style="color:var(--primary);">✓ Validated Key: Custom topics unlocked.</span>';
+          elSessionLabel.textContent = 'Custom Session';
+          log(`API Key Validated: ${key.slice(0, 8)}...`);
+        } else {
+          isValidated = false;
+          elKeySourceHint.innerHTML = '<span style="color:#ef4444;">⚠ Invalid Key: Restricted to free topic.</span>';
+          elSessionLabel.textContent = 'Guest (Invalid Key)';
+          log(`API Key Validation Failed: ${data.error || 'Unknown error'}`);
+        }
+      } catch (err) {
+        isValidated = false;
+        elKeySourceHint.innerHTML = 'Validation service unavailable.';
+      }
+    }
+
+    function init() {
+      // Restore auth session
+      const savedUser = sessionStorage.getItem('bf_auth_user');
+      if (savedUser) {
+        try {
+          user = JSON.parse(savedUser);
+        } catch (e) { sessionStorage.removeItem('bf_auth_user'); }
+      }
+
+      // Load local inputs
+      load();
+      updateAuthUI();
+    }
+    init();
+
+    btnSignIn.onclick = signIn;
+    btnSignOut.onclick = signOut;
+
+    $('advToggle').addEventListener('click', () => {
+      const p = $('advPanel');
+      p.classList.toggle('hidden');
+      $('advToggle').textContent = p.classList.contains('hidden') ? 'Advanced Options ▸' : 'Advanced Options ▾';
+    });
+
+    /* ── Helpers ── */
+    function log(msg) {
+      const ts = new Date().toLocaleTimeString();
+      const d = document.createElement('div');
+      d.className = 'console-line';
+      d.innerHTML = `<span class="console-ts">${ts}</span> · ${msg}`;
+      elLog.prepend(d);
+    }
+
+    function setStatus(cls, text) {
+      elStatusPill.className = `status-pill status-${cls}`;
+      elStatusPill.innerHTML = `<span class="status-dot"></span> ${text || cls.charAt(0).toUpperCase() + cls.slice(1)}`;
+    }
+
+    function updateStats() {
+      elStatPublished.textContent = stats.published;
+      elStatReceived.textContent = stats.received;
+      elStatTopics.textContent = activeSubs.size;
+      elStatDelivered.textContent = stats.delivered;
+    }
+
+    function addFeedItem(topic, from, data) {
+      if (elFeedEmpty) elFeedEmpty.remove();
+      const item = document.createElement('div');
+      item.className = 'feed-item';
+      const ts = new Date().toLocaleTimeString();
+      const shortFrom = (from || '').slice(0, 16);
+      item.innerHTML = `<div class="feed-item-header">
+          <span class="feed-topic-pill">${topic}</span>
+          <span>${ts} · from: ${shortFrom}</span>
+        </div>
+        <div class="feed-item-data">${JSON.stringify(data, null, 2)}</div>`;
+      elFeed.prepend(item);
+    }
+
+    function addLibraryItem(id, data) {
+      if (elLibraryEmpty) elLibraryEmpty.classList.add('hidden');
+      const item = document.createElement('div');
+      item.className = 'feed-item';
+      const ts = new Date(data.timestamp || Date.now()).toLocaleTimeString();
+      const topic = data.topic || 'unknown';
+      const shortFrom = (data.from || '').slice(0, 16);
+
+      item.innerHTML = `<div class="feed-item-header">
+          <span class="feed-topic-pill" style="background:#e0f2fe;color:#0369a1;">${topic}</span>
+          <span>${ts} · from: ${shortFrom}</span>
+        </div>
+        <div class="feed-item-data">${JSON.stringify(data, null, 2)}</div>`;
+
+      elLibrary.prepend(item);
+
+      // Limit items to prevent freezing
+      while (elLibrary.children.length > 50) {
+        elLibrary.removeChild(elLibrary.lastChild);
+      }
+    }
+
+    function parseRelays(text) { return (text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean); }
+    function splitRelays(lines) {
+      const gun = [], nostr = [];
+      for (const u of lines) { (/^wss?:\/\//i.test(u) ? nostr : gun).push(u); }
+      return { gunRelays: gun.length ? gun : undefined, nostrRelays: nostr.length ? nostr : undefined };
+    }
+
+    function setUI(connected) {
+      btnConnect.disabled = connected;
+      btnDisconnect.disabled = !connected;
+      btnPublish.disabled = !connected;
+      btnSubscribe.disabled = !connected;
+      elMetaNetwork.textContent = connected ? 'Active' : 'Inactive';
+      elMetaNetwork.classList.toggle('active', connected);
+    }
+
+    /* ── Persist ── */
+    function save() {
+      ['customRelays', 'pubTopic', 'subTopic', 'pubData', 'roomIdInput', 'activeKeyInput'].forEach(k => {
+        const el = $(k);
+        if (el) localStorage.setItem('bf:' + k, el.value || '');
+      });
+    }
+    function load() {
+      ['customRelays', 'pubTopic', 'subTopic', 'pubData', 'roomIdInput', 'activeKeyInput'].forEach(k => {
+        const v = localStorage.getItem('bf:' + k);
+        const el = $(k);
+        if (v && el) el.value = v;
+      });
+      // Trigger initial hint update for manual keys
+      if (elActiveKeyInput.value.trim()) {
+        const val = elActiveKeyInput.value.trim();
+        selectedKey = val;
+        validateManualKey(val);
+      }
+    }
+
+    /* ── Connect ── */
+    btnConnect.addEventListener('click', async () => {
+      save();
+
+      const keyNamespace = selectedKey || FREE_TOPIC;
+      const customRoom = elRoomIdInput.value.trim();
+      const roomId = customRoom || keyNamespace;
+
+      setStatus('connecting', 'Connecting…');
+      log(`Booting fabric… (room: "${roomId.slice(0, 12)}…")`);
+
+      const { gunRelays, nostrRelays } = splitRelays(parseRelays(elCustomRelays.value));
+
+      try {
+        fabric = new PubSubFabric({ roomId, gunRelays, nostrRelays });
+        const peerId = await fabric.init();
+        elPeerDisplay.textContent = `Client ID: ${peerId}`;
+        setStatus('connected', 'Connected');
+        setUI(true);
+        log('Connected - ready to publish/subscribe');
+
+        // Auto-subscribe to default topic
+        const defaultTopic = elSubTopic.value.trim() || FREE_TOPIC;
+        doSubscribe(defaultTopic);
+
+        traceLibrary(roomId);
+      } catch (err) {
+        log(`ERROR: ${err.message}`);
+        setStatus('error', 'Error');
+      }
+    });
+
+    function traceLibrary(roomId) {
+      if (!fabric || !fabric.transport || !fabric.transport.gun) return;
+
+      const gun = fabric.transport.gun;
+      const room = gun.get(`pubsub-${roomId}`);
+
+      log(`Scanning Library (Gun DB: pubsub-${roomId})…`);
+
+      // Subscribe to recent messages
+      // Note: Gun map() can be heavy, so we rely on the limit in addLibraryItem
+      room.get('messages').map().on(async (data, id) => {
+        if (!data || !data.data) return;
+
+        try {
+          // Data is stored as a JSON string in 'data' field
+          let payload = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+
+          // Hack: if it looks like a wrapped message, unwrap it
+          if (payload.encoded) payload = payload.encoded; // double encoding check
+
+          // Attempt decryption if encrypted (Topic-based)
+          if (payload.topicEncrypted && payload.iv && payload.ciphertext) {
+            try {
+              const decrypted = await fabric.transport.decryptForTopic(
+                payload.topic,
+                payload.iv,
+                payload.ciphertext
+              );
+              payload.data = decrypted;
+              delete payload.topicEncrypted;
+              delete payload.iv;
+              delete payload.ciphertext;
+              // Add a marker to show it was decrypted
+              payload._decrypted = true;
+            } catch (err) {
+              // Failed to decrypt - show encrypted blob or error
+              payload._decryptionError = err.message;
+            }
+          }
+
+          addLibraryItem(id, payload);
+        } catch (e) {
+          // ignore parse errors
+        }
+      });
+    }
+
+    function autoSubscribe() {
+      const topic = elSubTopic.value.trim() || FREE_TOPIC;
+      if (topic && fabric && !activeSubs.has(topic)) {
+        doSubscribe(topic);
+      }
+    }
+
+    /* ── Disconnect ── */
+    btnDisconnect.addEventListener('click', async () => {
+      for (const [, unsub] of activeSubs) { try { unsub(); } catch { } }
+      activeSubs.clear(); renderSubs();
+      await fabric?.destroy?.(); fabric = null;
+      setStatus('idle', 'Idle');
+      setUI(false);
+      elPeerDisplay.textContent = 'Client ID: —';
+      elSessionLabel.textContent = '';
+      log('Disconnected.');
+      updateStats();
+    });
+
+    /* ── Subscribe ── */
+    function doSubscribe(topic) {
+      if (!topic || !fabric || activeSubs.has(topic)) return;
+      const unsub = fabric.subscribe(topic, (msg) => {
+        stats.received++;
+        stats.delivered++;
+        updateStats();
+        addFeedItem(topic, msg.from, msg.data);
+        log(`Message received on ${topic}: ${JSON.stringify(msg.data)}`);
+      });
+      activeSubs.set(topic, unsub);
+      renderSubs(); updateStats();
+      log(`Auto-subscribed to: ${topic}`);
+    }
+
+    btnSubscribe.addEventListener('click', () => {
+      const topic = elSubTopic.value.trim() || FREE_TOPIC;
+      if (!topic) return;
+      if (activeSubs.has(topic)) { log(`Already subscribed to: ${topic}`); return; }
+      doSubscribe(topic);
+    });
+
+    function renderSubs() {
+      elSubList.innerHTML = '';
+      elSubEmpty.classList.toggle('hidden', activeSubs.size > 0);
+      for (const topic of activeSubs.keys()) {
+        const pill = document.createElement('span');
+        pill.className = 'sub-pill';
+        pill.innerHTML = `${topic} <span class="sub-pill-x" data-t="${topic}">✕</span>`;
+        elSubList.appendChild(pill);
+      }
+      elSubList.querySelectorAll('.sub-pill-x').forEach(el => {
+        el.addEventListener('click', () => {
+          const t = el.dataset.t;
+          const fn = activeSubs.get(t); if (fn) fn();
+          activeSubs.delete(t); renderSubs(); updateStats();
+          log(`Unsubscribed from: ${t}`);
+        });
+      });
+    }
+
+    /* ── Publish ── */
+    btnPublish.addEventListener('click', async () => {
+      let topic = elPubTopic.value.trim() || FREE_TOPIC;
+      if (!topic || !fabric) return;
+
+      // Enforce free tier publication topic for unvalidated sessions
+      if (!isValidated && topic !== FREE_TOPIC) {
+        log(`Validation Restriction: Mapping "${topic}" to "${FREE_TOPIC}" for publication.`);
+        topic = FREE_TOPIC;
+      }
+
+      let data;
+      try { data = JSON.parse(elPubData.value); }
+      catch (err) { log(`ERROR: Invalid JSON — ${err.message}`); return; }
+      try {
+        await fabric.publish(topic, data);
+        stats.published++;
+        stats.delivered++;
+        updateStats();
+        log(`Publishing to topic: ${topic}`);
+        save();
+      } catch (err) { log(`ERROR Publish: ${err.message}`); }
+    });
+  </script>
+</body>
+
+</html>
