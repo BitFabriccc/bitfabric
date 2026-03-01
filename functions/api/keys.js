@@ -22,6 +22,8 @@ function isPremiumEmail(email) {
 function getMaxKeysForPlan({ plan }) {
   // Free: default only (1 total)
   // Premium: default + 5 custom (6 total)
+  // Enterprise: default + 99 custom (100 total)
+  if (plan === 'enterprise') return 100;
   if (plan === 'premium') return 6;
   return 1;
 }
@@ -137,11 +139,11 @@ export async function onRequestPost(context) {
     const currentCount = Number(countRow?.cnt || 0);
 
     if (currentCount >= maxKeys) {
-      return new Response(JSON.stringify({
-        error: auth.plan === 'premium'
-          ? 'Key limit reached (premium: 5 custom + default)'
-          : 'Key limit reached (free: default only)'
-      }), {
+      let error = 'Key limit reached (free: default only)';
+      if (auth.plan === 'premium') error = 'Key limit reached (premium: 5 custom + default)';
+      if (auth.plan === 'enterprise') error = 'Key limit reached (enterprise: 99 custom + default)';
+
+      return new Response(JSON.stringify({ error }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
       });

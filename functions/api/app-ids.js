@@ -19,8 +19,9 @@ function isPremiumEmail(email) {
 }
 
 function getMaxAppIds({ plan }) {
-    // App IDs are only for paid users (or whitelisted premium). Allow up to 20.
-    if (plan === 'premium' || plan === 'pro' || plan === 'enterprise') return 20;
+    // App IDs are only for paid users (or whitelisted premium). Allow up to 20 for premium/pro, 100 for enterprise.
+    if (plan === 'enterprise') return 100;
+    if (plan === 'premium' || plan === 'pro') return 20;
     return 0; // Free accounts do not get App IDs
 }
 
