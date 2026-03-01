@@ -20,6 +20,15 @@ function isPremiumEmail(email) {
     return PREMIUM_WHITELIST.includes(email);
 }
 
+function isSuperAdmin(email) {
+    const SUPER_ADMINS = [
+        'draeder@gmail.com',
+        'danraeder@gmail.com',
+        'daniel@bitfabric.cc'
+    ];
+    return SUPER_ADMINS.includes(normalizeEmail(email));
+}
+
 function getMaxAppIds({ plan }) {
     // App IDs are only for paid users (or whitelisted premium). Allow up to 20 for premium/pro, 100 for enterprise.
     if (plan === 'enterprise') return 100;
@@ -80,9 +89,18 @@ export async function onRequestGet(context) {
     }
 
     try {
-        const results = await env.DB.prepare(
-            'SELECT id, app_id, name, api_key_id, created_at FROM app_ids WHERE account_id = ? ORDER BY created_at DESC'
-        ).bind(auth.accountId).all();
+        let results;
+        if (isSuperAdmin(auth.email)) {
+            // Super admin sees ALL apps
+            results = await env.DB.prepare(
+                'SELECT id, app_id, name, api_key_id, created_at FROM app_ids ORDER BY created_at DESC'
+            ).all();
+        } else {
+            // Regular user sees only their own apps
+            results = await env.DB.prepare(
+                'SELECT id, app_id, name, api_key_id, created_at FROM app_ids WHERE account_id = ? ORDER BY created_at DESC'
+            ).bind(auth.accountId).all();
+        }
 
         return new Response(JSON.stringify({ appIds: results.results || [] }), {
             headers: { 'Content-Type': 'application/json' }

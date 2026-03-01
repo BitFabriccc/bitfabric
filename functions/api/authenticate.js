@@ -23,6 +23,15 @@ function isPremiumEmail(email) {
   return PREMIUM_WHITELIST.includes(email);
 }
 
+function isSuperAdmin(email) {
+  const SUPER_ADMINS = [
+    'draeder@gmail.com',
+    'danraeder@gmail.com',
+    'daniel@bitfabric.cc'
+  ];
+  return SUPER_ADMINS.includes(normalizeEmail(email));
+}
+
 async function computeAccountId(email) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return '';
@@ -134,8 +143,9 @@ export async function onRequestPost(context) {
         sessionKey = existing.value;
       } else {
         const newKey = randomHex(32); // 64 hex chars
+        // Use INSERT OR IGNORE to prevent duplicate key creation
         await env.DB.prepare(
-          'INSERT INTO api_keys (account_id, key_id, name, description, value, created_at, permanent) VALUES (?, ?, ?, ?, ?, ?, ?)'
+          'INSERT OR IGNORE INTO api_keys (account_id, key_id, name, description, value, created_at, permanent) VALUES (?, ?, ?, ?, ?, ?, ?)'
         ).bind(
           accountId,
           'default',
@@ -145,14 +155,26 @@ export async function onRequestPost(context) {
           Date.now(),
           1
         ).run();
-        sessionKey = newKey;
-        defaultKeyRow = {
-          key_id: 'default',
-          name: 'Default',
-          description: 'Your default API key',
-          value: newKey,
-          permanent: 1
-        };
+        
+        // Re-fetch to get the actual persisted key (in case of race condition)
+        const refetch = await env.DB.prepare(
+          'SELECT * FROM api_keys WHERE account_id = ? AND key_id = ? LIMIT 1'
+        ).bind(accountId, 'default').first();
+        
+        if (refetch && refetch.value) {
+          defaultKeyRow = refetch;
+          sessionKey = refetch.value;
+        } else {
+          // Fallback if DB write somehow failed
+          sessionKey = newKey;
+          defaultKeyRow = {
+            key_id: 'default',
+            name: 'Default',
+            description: 'Your default API key',
+            value: newKey,
+            permanent: 1
+          };
+        }
       }
     } catch (dbError) {
       console.error('Error managing default key:', dbError);
@@ -163,6 +185,7 @@ export async function onRequestPost(context) {
     return new Response(JSON.stringify({
       authenticated: true,
       isPremium,
+      isSuperAdmin: isSuperAdmin(email),
       email,
       sessionKey,
       accountId: accountId,

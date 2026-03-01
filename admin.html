@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - BitFabric</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f111a;
+            color: #f8fafc;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            margin-bottom: 30px;
+            color: #6366f1;
+        }
+        .card {
+            background: rgba(26, 29, 41, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #5558e3;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 6px;
+            font-family: 'Monaco', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .error {
+            background: rgba(244, 63, 94, 0.1);
+            border-color: rgba(244, 63, 94, 0.3);
+            color: #fca5a5;
+        }
+        .warning {
+            background: rgba(251, 191, 36, 0.1);
+            border-color: rgba(251, 191, 36, 0.3);
+            color: #fde047;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            color: #f8fafc;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 BitFabric Admin</h1>
+        
+        <div class="warning">
+            ⚠️ Admin access only. Actions are irreversible.
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 16px;">Clean Up Duplicate Keys</h2>
+            <p style="color: #94a3b8; margin-bottom: 20px;">
+                Removes duplicate "default" API keys, keeping the oldest one per account.
+            </p>
+            
+            <label>Admin Email</label>
+            <input type="email" id="admin-email" placeholder="draeder@gmail.com">
+            
+            <label>Password Hash</label>
+            <input type="password" id="admin-password" placeholder="Enter your password">
+            
+            <button class="btn" id="btn-cleanup">🧹 Clean Up Duplicate Keys</button>
+            
+            <div id="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        const btnCleanup = document.getElementById('btn-cleanup');
+        const resultDiv = document.getElementById('result');
+        const emailInput = document.getElementById('admin-email');
+        const passwordInput = document.getElementById('admin-password');
+
+        // Auto-fill from localStorage
+        emailInput.value = localStorage.getItem('bitfabric-email') || '';
+
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        btnCleanup.addEventListener('click', async () => {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Error: Email and password required';
+                return;
+            }
+
+            btnCleanup.disabled = true;
+            btnCleanup.textContent = '⏳ Cleaning...';
+
+            try {
+                const passwordHash = await hashPassword(password);
+                
+                const response = await fetch('/api/admin-cleanup-keys', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, passwordHash })
+                });
+
+                const data = await response.json();
+
+                resultDiv.style.display = 'block';
+
+                if (response.ok) {
+                    resultDiv.className = 'result';
+                    resultDiv.textContent = `✅ Success!\n\nCleaned: ${data.cleaned} accounts\n\n${JSON.stringify(data.details, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (error) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            } finally {
+                btnCleanup.disabled = false;
+                btnCleanup.textContent = '🧹 Clean Up Duplicate Keys';
+            }
+        });
+    </script>
+</body>
+</html>
