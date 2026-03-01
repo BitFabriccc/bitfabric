@@ -1,3 +1,4 @@
 [submodule "NPM/bitfabric"]
 	path = NPM/bitfabric
 	url = https://github.com/BitFabriccc/bitfabric
+	branch = package
