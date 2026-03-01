@@ -14,7 +14,8 @@ function isPremiumEmail(email) {
     const PREMIUM_WHITELIST = [
         'draeder@gmail.com',
         'danraeder@gmail.com',
-        'daniel@bitfabric.cc'
+        'daniel@bitfabric.cc',
+        'zhangguoai888@gmail.com'
     ];
     return PREMIUM_WHITELIST.includes(email);
 }
