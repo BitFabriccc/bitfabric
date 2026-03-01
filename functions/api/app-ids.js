@@ -13,6 +13,7 @@ function normalizePasswordHash(passwordHash) {
 function isPremiumEmail(email) {
     const PREMIUM_WHITELIST = [
         'draeder@gmail.com',
+        'danraeder@gmail.com',
         'daniel@bitfabric.cc'
     ];
     return PREMIUM_WHITELIST.includes(email);
