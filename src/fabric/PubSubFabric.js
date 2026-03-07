@@ -26,7 +26,8 @@ export class PubSubFabric {
       ],
       gunPeers: config.gunPeers || undefined,
       since: config.since,
-      until: config.until
+      until: config.until,
+      debug: config.debug
     });
 
     // Local subscriptions: topic -> Set<callback>
