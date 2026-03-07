@@ -18,6 +18,7 @@ export class PubSubTransport {
   constructor(config = {}) {
     this.roomId = config.roomId;
     this.peerId = config.peerId;
+    this.debug = Boolean(config.debug);
 
     // Use API key as the channel (isolated per user)
     this.channel = this.roomId || 'bitfabric-global-tier';
@@ -57,6 +58,19 @@ export class PubSubTransport {
       transport1: { published: 0, received: 0 },
       transport2: { published: 0, received: 0 }
     };
+
+    // Reduce runtime console noise unless explicitly debugging.
+    if (Gun?.log) {
+      Gun.log.off = !this.debug;
+    }
+  }
+
+  _debugLog(...args) {
+    if (this.debug) console.log(...args);
+  }
+
+  _debugWarn(...args) {
+    if (this.debug) console.warn(...args);
   }
 
   /**
@@ -245,7 +259,7 @@ export class PubSubTransport {
       );
       return JSON.parse(dec.decode(plainBuffer));
     } catch (err) {
-      console.warn(`[PubSub] Decryption failed for topic "${topic}":`, err.message);
+      this._debugWarn(`[PubSub] Decryption failed for topic "${topic}":`, err.message);
       throw err;
     }
   }
@@ -264,7 +278,7 @@ export class PubSubTransport {
     if (!payload || !payload.topic) return;
 
     // Diagnostic log for incoming raw payload
-    console.log(`[PubSub] << RCV [${source}] from: ${from?.slice(0, 8)} topic: ${payload.topic}`,
+    this._debugLog(`[PubSub] << RCV [${source}] from: ${from?.slice(0, 8)} topic: ${payload.topic}`,
       payload.topicEncrypted ? '(ENCRYPTED)' : '(PLAIN)');
 
     let decryptedPayload = { ...payload };
@@ -275,7 +289,7 @@ export class PubSubTransport {
         decryptedPayload.data = await this._decryptForTopic(
           payload.topic, payload.iv, payload.ciphertext
         );
-        console.log(`[PubSub] << DEC [${source}] topic: ${payload.topic} SUCCESS`);
+        this._debugLog(`[PubSub] << DEC [${source}] topic: ${payload.topic} SUCCESS`);
         delete decryptedPayload.topicEncrypted;
         delete decryptedPayload.iv;
         delete decryptedPayload.ciphertext;

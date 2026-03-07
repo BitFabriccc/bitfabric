@@ -1,6 +1,6 @@
 {
   "name": "bitfabric",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Direct pub/sub messaging over Gun + Nostr",
   "type": "module",
   "sideEffects": false,

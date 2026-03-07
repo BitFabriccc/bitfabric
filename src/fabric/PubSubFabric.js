@@ -23,7 +23,8 @@ export class PubSubFabric {
         'wss://relay.snort.social',
         'wss://nostr.wine',
         'wss://relay.damus.io'
-      ]
+      ],
+      debug: config.debug
     });
 
     // Local subscriptions: topic -> Set<callback>
