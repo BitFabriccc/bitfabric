@@ -683,7 +683,7 @@ async function executeCancelBurst() {
     // Disconnect the fabric and let the user reconnect if they want without the premium relay
     await disconnect();
     
-    alert('Your dedicated relay has been terminated and the plan prorated. You have been disconnected. Please reconnect manually.');
+    pushLog('Your dedicated relay has been terminated and prorated. You have been disconnected. Reconnect manually if needed.');
   } catch (err) {
     pushLog(`Cancel error: ${err.message}`);
   } finally {
@@ -1418,7 +1418,7 @@ function createApiKey() {
 function deleteApiKey(keyId) {
   // Prevent deletion of Default key
   if (keyId === 'default') {
-    alert('Default API key cannot be deleted.');
+    pushLog('Default API key cannot be deleted.');
     return;
   }
   

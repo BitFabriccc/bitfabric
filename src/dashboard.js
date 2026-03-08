@@ -35,6 +35,26 @@ const groupLinkCapabilities = document.getElementById('link-cap-group');
 
 const planAlert = document.getElementById('plan-alert');
 
+function showDashboardNotice(message, tone = 'info') {
+    const id = 'dashboard-inline-notice';
+    let notice = document.getElementById(id);
+    if (!notice) {
+        notice = document.createElement('div');
+        notice.id = id;
+        notice.style.cssText = 'margin:12px 0;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--text-color,#fff);font-size:13px;';
+        (planAlert?.parentElement || document.body).insertBefore(notice, (planAlert || document.body).nextSibling);
+    }
+
+    const styles = {
+        success: 'background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.28);color:#a7f3d0;',
+        error: 'background:rgba(244,63,94,0.12);border-color:rgba(244,63,94,0.28);color:#fecdd3;',
+        info: 'background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.28);color:#c7d2fe;'
+    };
+
+    notice.style.cssText = `margin:12px 0;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);font-size:13px;${styles[tone] || styles.info}`;
+    notice.textContent = message;
+}
+
 // Redirect if unauthenticated
 if (!authEmail || !authPasswordHash) {
     if (planAlert) {
@@ -217,9 +237,10 @@ function renderKeys() {
 window.copyKey = async (key) => {
     try {
         await navigator.clipboard.writeText(key);
-        alert('Copied to clipboard!');
+        showDashboardNotice('Copied to clipboard.', 'success');
     } catch (err) {
         console.error('Failed to copy', err);
+        showDashboardNotice('Failed to copy to clipboard.', 'error');
     }
 };
 
@@ -233,9 +254,10 @@ window.deleteAppId = async (appId) => {
                 body: JSON.stringify({ email: authEmail, passwordHash: authPasswordHash, appId: appId })
             });
             if (response.ok) await fetchKeys();
-            else alert('Failed to delete App ID: ' + (await response.json()).error);
+            else showDashboardNotice('Failed to delete App ID: ' + (await response.json()).error, 'error');
         } catch (err) {
             console.error('Delete error', err);
+            showDashboardNotice('Failed to delete App ID.', 'error');
         }
     }
 };
@@ -260,9 +282,10 @@ window.updateAppCapability = async (appId, capability) => {
             })
         });
         if (response.ok) await fetchKeys();
-        else alert('Failed to update capability: ' + (await response.json()).error);
+        else showDashboardNotice('Failed to update capability: ' + (await response.json()).error, 'error');
     } catch (err) {
         console.error('Update error', err);
+        showDashboardNotice('Failed to update capability.', 'error');
     }
 };
 
@@ -276,9 +299,10 @@ window.deleteApiKey = async (keyId) => {
                 body: JSON.stringify({ email: authEmail, passwordHash: authPasswordHash, keyId: keyId })
             });
             if (response.ok) await fetchKeys();
-            else alert('Failed to delete API Key: ' + (await response.json()).error);
+            else showDashboardNotice('Failed to delete API key: ' + (await response.json()).error, 'error');
         } catch (err) {
             console.error('Delete error', err);
+            showDashboardNotice('Failed to delete API key.', 'error');
         }
     }
 };
@@ -316,9 +340,10 @@ window.unlinkAppId = async (appId) => {
                 body: JSON.stringify({ email: authEmail, passwordHash: authPasswordHash, appId: appId, apiKeyId: null })
             });
             if (response.ok) await fetchKeys();
-            else alert('Failed to unlink App ID: ' + (await response.json()).error);
+            else showDashboardNotice('Failed to unlink App ID: ' + (await response.json()).error, 'error');
         } catch (err) {
             console.error('Unlink error', err);
+            showDashboardNotice('Failed to unlink App ID.', 'error');
         }
     }
 };
@@ -361,7 +386,10 @@ if (btnCreateApp) {
         const name = inputAppName.value.trim();
         const apiKeyId = inputAppApiKey.value;
         const capabilities = inputAppCapabilities.value;
-        if (!name) return alert('Please enter an Application Name.');
+        if (!name) {
+            showDashboardNotice('Please enter an application name.', 'error');
+            return;
+        }
 
         btnCreateApp.disabled = true;
         btnCreateApp.textContent = 'Generating...';
@@ -382,10 +410,11 @@ if (btnCreateApp) {
                 appModalOverlay.classList.remove('active');
                 await fetchKeys();
             } else {
-                alert('Failed to generate App ID: ' + (data.error || 'Limit reached.'));
+                showDashboardNotice('Failed to generate App ID: ' + (data.error || 'Limit reached.'), 'error');
             }
         } catch (err) {
             console.error(err);
+            showDashboardNotice('Failed to generate App ID.', 'error');
         } finally {
             btnCreateApp.disabled = false;
             btnCreateApp.textContent = 'Generate App ID';
@@ -409,7 +438,10 @@ if (keyModalOverlay) keyModalOverlay.addEventListener('click', (e) => { if (e.ta
 if (btnCreateKey) {
     btnCreateKey.addEventListener('click', async () => {
         const name = inputKeyName.value.trim();
-        if (!name) return alert('Please enter a Key Name.');
+        if (!name) {
+            showDashboardNotice('Please enter a key name.', 'error');
+            return;
+        }
 
         btnCreateKey.disabled = true;
         btnCreateKey.textContent = 'Generating...';
@@ -424,10 +456,11 @@ if (btnCreateKey) {
                 keyModalOverlay.classList.remove('active');
                 await fetchKeys();
             } else {
-                alert('Failed to generate Key: ' + (data.error || 'Limit reached.'));
+                showDashboardNotice('Failed to generate key: ' + (data.error || 'Limit reached.'), 'error');
             }
         } catch (err) {
             console.error(err);
+            showDashboardNotice('Failed to generate key.', 'error');
         } finally {
             btnCreateKey.disabled = false;
             btnCreateKey.textContent = 'Generate API Key';
@@ -472,10 +505,11 @@ if (btnSaveLink) {
                 linkKeyModalOverlay.classList.remove('active');
                 await fetchKeys();
             } else {
-                alert('Failed to link App ID: ' + (data.error || 'Unknown error.'));
+                showDashboardNotice('Failed to link App ID: ' + (data.error || 'Unknown error.'), 'error');
             }
         } catch (err) {
             console.error(err);
+            showDashboardNotice('Failed to link App ID.', 'error');
         } finally {
             btnSaveLink.disabled = false;
             btnSaveLink.textContent = 'Save Settings';
