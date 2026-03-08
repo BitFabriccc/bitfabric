@@ -104,7 +104,7 @@ function renderOverview() {
             <div class="summary-grid">
                 <div><strong>${activeUsers}</strong> active user${activeUsers === 1 ? '' : 's'}</div>
                 <div><strong>${bannedUsers}</strong> banned account${bannedUsers === 1 ? '' : 's'}</div>
-                <div><strong>${allKeys.length}</strong> active API key${allKeys.length === 1 ? '' : 's'}</div>
+                <div><strong>${allKeys.length}</strong> API key${allKeys.length === 1 ? '' : 's'}</div>
                 <div><strong>${allApps.length}</strong> app ID${allApps.length === 1 ? '' : 's'}</div>
             </div>
         `;
@@ -137,7 +137,7 @@ function renderUsers() {
                     </div>
                 </div>
             `).join('')
-            : '<div class="child-item"><div class="child-main"><div class="cell-subtitle">No active keys</div></div></div>';
+            : '<div class="child-item"><div class="child-main"><div class="cell-subtitle">No keys</div></div></div>';
 
         const appItems = userApps.length
             ? userApps.map((app) => `
@@ -275,6 +275,9 @@ async function refreshDashboard() {
     setStatus('Refreshing admin data…');
     try {
         await Promise.all([loadUsers(), loadKeys(), loadApps()]);
+        renderUsers();
+        renderKeys();
+        renderApps();
         renderOverview();
         setStatus(`Loaded ${allUsers.length} users, ${allKeys.length} keys, and ${allApps.length} app IDs.`, 'success');
     } catch (error) {
@@ -309,7 +312,7 @@ async function restoreUser(email) {
 }
 
 async function revokeKeys(email) {
-    if (!confirm(`Revoke all active keys for ${email}?`)) return;
+    if (!confirm(`Revoke all keys for ${email}?`)) return;
     await runUserAction('revoke-keys', email, `Revoked keys for ${email}`);
 }
 
