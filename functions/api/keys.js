@@ -92,6 +92,8 @@ export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const email = url.searchParams.get('email');
+  const scope = (url.searchParams.get('scope') || '').toLowerCase();
+  const includeAll = scope === 'all';
 
   // Avoid putting passwordHash in URL: accept it via header for GET
   const passwordHash = request.headers.get('x-bitfabric-password-hash');
@@ -106,7 +108,7 @@ export async function onRequestGet(context) {
 
   try {
     let results;
-    if (isSuperAdmin(auth.email)) {
+    if (isSuperAdmin(auth.email) && includeAll) {
       // Super admin sees ALL keys
       results = await env.DB.prepare(
         'SELECT account_id, key_id, name, description, value, created_at, permanent FROM api_keys ORDER BY created_at DESC'

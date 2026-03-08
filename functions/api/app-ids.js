@@ -78,6 +78,8 @@ export async function onRequestGet(context) {
     const { request, env } = context;
     const url = new URL(request.url);
     const email = url.searchParams.get('email');
+    const scope = (url.searchParams.get('scope') || '').toLowerCase();
+    const includeAll = scope === 'all';
     const passwordHash = request.headers.get('x-bitfabric-password-hash');
 
     const auth = await requireAccountAuth({ env, email, passwordHash });
@@ -90,7 +92,7 @@ export async function onRequestGet(context) {
 
     try {
         let results;
-        if (isSuperAdmin(auth.email)) {
+        if (isSuperAdmin(auth.email) && includeAll) {
             // Super admin sees ALL apps
             results = await env.DB.prepare(
                 'SELECT id, app_id, name, api_key_id, created_at FROM app_ids ORDER BY created_at DESC'

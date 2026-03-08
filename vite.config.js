@@ -30,6 +30,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+        admin: resolve(__dirname, 'admin.html'),
         pricing: resolve(__dirname, 'pricing.html'),
         signup: resolve(__dirname, 'signup.html'),
         checkout: resolve(__dirname, 'checkout.html'),
