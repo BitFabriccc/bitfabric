@@ -27,6 +27,9 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    modulePreload: {
+      polyfill: false
+    },
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),

@@ -398,7 +398,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { PubSubFabric } from './fabric/index.js';
+import { PubSubFabric } from './fabric/PubSubFabric.js';
 
 // Check sessionStorage for stored API key (don't use URL for security)
 const storedApiKey = sessionStorage.getItem('bitfabric-api-key');

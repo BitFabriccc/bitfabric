@@ -1,4 +1,4 @@
-import { PubSubFabric } from './fabric/index.js';
+import { PubSubFabric } from './fabric/PubSubFabric.js';
 import { Chart, registerables } from 'chart.js';
 
 // Register Chart.js
