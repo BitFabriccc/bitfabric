@@ -93,12 +93,11 @@ export async function onRequestGet(context) {
     try {
         let results;
         if (isSuperAdmin(auth.email) && includeAll) {
-            // Super admin sees ALL apps with account/email info
+            // Super admin sees ALL apps with account/email info and deleted_at
             results = await env.DB.prepare(
-                `SELECT a.id, a.app_id, a.name, a.account_id, acc.email, acc.plan, a.created_at 
+                `SELECT a.id, a.app_id, a.name, a.account_id, acc.email, acc.plan, acc.deleted_at, a.created_at 
                  FROM app_ids a 
                  JOIN accounts acc ON a.account_id = acc.account_id 
-                 WHERE acc.deleted_at IS NULL
                  ORDER BY a.created_at DESC`
             ).all();
         } else {

@@ -109,12 +109,11 @@ export async function onRequestGet(context) {
   try {
     let results;
     if (isSuperAdmin(auth.email) && includeAll) {
-      // Super admin sees ALL keys with email info
+      // Super admin sees ALL keys with email info and deleted_at status
       results = await env.DB.prepare(
-        `SELECT k.account_id, a.email, a.plan, k.key_id, k.name, k.description, k.value, k.created_at, k.permanent 
+        `SELECT k.account_id, a.email, a.plan, a.deleted_at, k.key_id, k.name, k.description, k.value, k.created_at, k.permanent 
          FROM api_keys k 
          JOIN accounts a ON k.account_id = a.account_id 
-         WHERE a.deleted_at IS NULL
          ORDER BY k.created_at DESC`
       ).all();
     } else {

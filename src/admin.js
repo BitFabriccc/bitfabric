@@ -177,11 +177,20 @@ function renderUsers() {
     
     filtered.forEach(user => {
         const row = document.createElement('tr');
+        const isBanned = user.deleted_at !== null && user.deleted_at !== undefined;
+        const statusLabel = isBanned ? '(BANNED)' : '';
+        
         row.innerHTML = `
-            <td>${user.email || 'Unknown'}</td>
+            <td>${user.email || 'Unknown'} ${statusLabel}</td>
             <td>${(user.plan || 'free').toUpperCase()}</td>
             <td>${user.created ? new Date(user.created).toLocaleDateString() : 'N/A'}</td>
-            <td style="text-align: right;"><button class="btn-sm" onclick="alert('Delete user: ' + '${user.account_id}')">Delete</button></td>
+            <td style="text-align: right;">
+                ${isBanned 
+                    ? `<button class="btn-success btn-sm" onclick="restoreUser('${user.email}')">Restore</button>` 
+                    : `<button class="btn-warning btn-sm" onclick="banUser('${user.email}')">Ban</button>`
+                }
+                <button class="btn-danger btn-sm" onclick="revokeKeys('${user.email}')">Revoke Keys</button>
+            </td>
         `;
         tbody.appendChild(row);
     });
@@ -295,7 +304,7 @@ async function deleteKey(keyId) {
     try {
         const resp = await fetch(`/api/keys?keyId=${keyId}`, { method: 'DELETE' });
         if (resp.ok) {
-            allKeys = allKeys.filter(k => k.keyId !== keyId);
+            allKeys = allKeys.filter(k => k.key_id !== keyId);
             renderKeys();
         } else {
             alert('Failed to delete key');
@@ -312,7 +321,7 @@ async function deleteApp(appId) {
     try {
         const resp = await fetch(`/api/app-ids?appId=${appId}`, { method: 'DELETE' });
         if (resp.ok) {
-            allApps = allApps.filter(a => a.appId !== appId);
+            allApps = allApps.filter(a => a.app_id !== appId);
             renderApps();
         } else {
             alert('Failed to delete app');
@@ -320,6 +329,93 @@ async function deleteApp(appId) {
     } catch (err) {
         console.error('Delete error:', err);
         alert('Error deleting app');
+    }
+}
+
+async function banUser(email) {
+    if (!confirm(`Ban user ${email}? They will lose access immediately.`)) return;
+    
+    try {
+        const resp = await fetch('/api/admin-users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-bitfabric-password-hash': localStorage.getItem('bitfabric-password-hash')
+            },
+            body: JSON.stringify({
+                action: 'ban',
+                targetEmail: email
+            })
+        });
+        
+        if (resp.ok) {
+            await loadUsers();
+        } else {
+            const err = await resp.json();
+            alert('Failed to ban user: ' + err.error);
+        }
+    } catch (err) {
+        console.error('Ban error:', err);
+        alert('Error banning user');
+    }
+}
+
+async function restoreUser(email) {
+    if (!confirm(`Restore user ${email}?`)) return;
+    
+    try {
+        const resp = await fetch('/api/admin-users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-bitfabric-password-hash': localStorage.getItem('bitfabric-password-hash')
+            },
+            body: JSON.stringify({
+                action: 'restore',
+                targetEmail: email
+            })
+        });
+        
+        if (resp.ok) {
+            await loadUsers();
+        } else {
+            const err = await resp.json();
+            alert('Failed to restore user: ' + err.error);
+        }
+    } catch (err) {
+        console.error('Restore error:', err);
+        alert('Error restoring user');
+    }
+}
+
+async function revokeKeys(email) {
+    if (!confirm(`Revoke all API keys for ${email}?`)) return;
+    
+    try {
+        const resp = await fetch('/api/admin-users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-bitfabric-password-hash': localStorage.getItem('bitfabric-password-hash')
+            },
+            body: JSON.stringify({
+                action: 'revoke-keys',
+                targetEmail: email
+            })
+        });
+        
+        if (resp.ok) {
+            const data = await resp.json();
+            alert(data.message);
+            await loadKeys();
+            await loadUsers();
+        } else {
+            const err = await resp.json();
+            alert('Failed to revoke keys: ' + err.error);
+        }
+    } catch (err) {
+        console.error('Revoke error:', err);
+        alert('Error revoking keys');
     }
 }
 
