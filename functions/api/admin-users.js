@@ -38,6 +38,56 @@ async function requireAdminAuth({ env, email, passwordHash }) {
   }
 }
 
+export async function onRequestGet(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const email = url.searchParams.get('email');
+  const passwordHash = request.headers.get('x-bitfabric-password-hash');
+
+  const auth = await requireAdminAuth({ env, email, passwordHash });
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  try {
+    const users = await env.DB.prepare(`
+      SELECT
+        a.account_id,
+        a.email,
+        a.plan,
+        a.created_at,
+        a.deleted_at,
+        COALESCE(k.key_count, 0) AS key_count,
+        COALESCE(app.app_count, 0) AS app_count
+      FROM accounts a
+      LEFT JOIN (
+        SELECT account_id, COUNT(*) AS key_count
+        FROM api_keys
+        WHERE deleted_at IS NULL
+        GROUP BY account_id
+      ) k ON k.account_id = a.account_id
+      LEFT JOIN (
+        SELECT account_id, COUNT(*) AS app_count
+        FROM app_ids
+        GROUP BY account_id
+      ) app ON app.account_id = a.account_id
+      ORDER BY a.created_at DESC
+    `).all();
+
+    return new Response(JSON.stringify({ users: users.results || [] }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   const url = new URL(request.url);

@@ -220,7 +220,7 @@ export async function onRequestPost(context) {
 export async function onRequestDelete(context) {
   const { request, env } = context;
   const body = await request.json();
-  const { email, passwordHash, keyId } = body;
+  const { email, passwordHash, keyId, accountId } = body;
 
   if (!keyId || keyId === 'default') {
     return new Response(JSON.stringify({ error: 'Invalid request' }), {
@@ -238,9 +238,10 @@ export async function onRequestDelete(context) {
   }
 
   try {
+    const targetAccountId = isSuperAdmin(auth.email) && accountId ? accountId : auth.accountId;
     await env.DB.prepare(
       'DELETE FROM api_keys WHERE account_id = ? AND key_id = ?'
-    ).bind(auth.accountId, keyId).run();
+    ).bind(targetAccountId, keyId).run();
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { 'Content-Type': 'application/json' }

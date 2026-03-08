@@ -195,7 +195,7 @@ export async function onRequestPost(context) {
 export async function onRequestDelete(context) {
     const { request, env } = context;
     const body = await request.json();
-    const { email, passwordHash, appId } = body;
+    const { email, passwordHash, appId, accountId } = body;
 
     if (!appId) {
         return new Response(JSON.stringify({ error: 'Missing appId' }), {
@@ -213,9 +213,10 @@ export async function onRequestDelete(context) {
     }
 
     try {
+        const targetAccountId = isSuperAdmin(auth.email) && accountId ? accountId : auth.accountId;
         await env.DB.prepare(
             'DELETE FROM app_ids WHERE account_id = ? AND app_id = ?'
-        ).bind(auth.accountId, appId).run();
+        ).bind(targetAccountId, appId).run();
 
         return new Response(JSON.stringify({ success: true }), {
             headers: { 'Content-Type': 'application/json' }
