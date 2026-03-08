@@ -32,8 +32,8 @@ async function init() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                email: localStorage.getItem('userEmail'),
-                passwordHash: localStorage.getItem('passwordHash')
+                email: sessionStorage.getItem('bitfabric-email'),
+                passwordHash: sessionStorage.getItem('bitfabric-password-hash')
             })
         });
         
