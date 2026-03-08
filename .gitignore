@@ -141,3 +141,8 @@ vite.config.ts.timestamp-*
 # Local test files and DBs
 radata/
 test_transport.js
+
+# Wrangler/Miniflare local runtime state (never commit)
+.wrangler/state/
+*.sqlite-shm
+*.sqlite-wal
