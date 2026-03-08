@@ -103,7 +103,7 @@ export async function onRequestGet(context) {
         } else {
             // Regular user sees only their own apps
             results = await env.DB.prepare(
-                'SELECT id, app_id, name, api_key_id, created_at FROM app_ids WHERE account_id = ? ORDER BY created_at DESC'
+                'SELECT id, app_id, name, api_key_id, capabilities, created_at FROM app_ids WHERE account_id = ? ORDER BY created_at DESC'
             ).bind(auth.accountId).all();
         }
 

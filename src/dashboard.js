@@ -126,6 +126,7 @@ async function fetchKeys() {
 // Render Table
 function renderKeys() {
     tbody.innerHTML = '';
+    const knownKeyIds = new Set((keyList || []).map(k => k.key_id));
 
     if (appList.length === 0) {
         emptyState.style.display = 'block';
@@ -133,14 +134,14 @@ function renderKeys() {
         emptyState.style.display = 'none';
 
         // First pass: render all explicitly unassigned (Subscribe Only) App IDs
-        const unassignedApps = appList.filter(a => !a.api_key_id);
+        const unassignedApps = appList.filter(a => !a.api_key_id || !knownKeyIds.has(a.api_key_id));
         unassignedApps.forEach(appData => {
             const appTr = document.createElement('tr');
             appTr.style.background = 'rgba(255, 255, 255, 0.02)';
             appTr.innerHTML = `
                 <td>
                     <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${appData.name || 'Unnamed App'}</div>
-                    <span class="badge badge-info">Unassigned App ID</span>
+                    <span class="badge badge-info">${appData.api_key_id && !knownKeyIds.has(appData.api_key_id) ? 'Unassigned (Missing Key)' : 'Unassigned App ID'}</span>
                 </td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -312,7 +313,10 @@ window.openLinkModal = (appId) => {
 
     // find existing app to set the current capability selection
     const existingApp = appList.find(a => a.app_id === appId);
-    const existingKeyId = existingApp ? existingApp.api_key_id : null;
+    const knownKeyIds = new Set((keyList || []).map(k => k.key_id));
+    const existingKeyId = (existingApp && existingApp.api_key_id && knownKeyIds.has(existingApp.api_key_id))
+        ? existingApp.api_key_id
+        : null;
     const existingCap = existingApp ? existingApp.capabilities : 'inherit';
 
     inputLinkApiKey.innerHTML = '<option value="">None (Unlink / Subscribe Only)</option>';

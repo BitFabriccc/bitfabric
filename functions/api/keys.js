@@ -240,6 +240,12 @@ export async function onRequestDelete(context) {
 
   try {
     const targetAccountId = isSuperAdmin(auth.email) && accountId ? accountId : auth.accountId;
+
+    // Any app IDs linked to this key should become subscribe-only/unassigned.
+    await env.DB.prepare(
+      'UPDATE app_ids SET api_key_id = NULL, capabilities = ? WHERE account_id = ? AND api_key_id = ?'
+    ).bind('subscribe-only', targetAccountId, keyId).run();
+
     await env.DB.prepare(
       'DELETE FROM api_keys WHERE account_id = ? AND key_id = ?'
     ).bind(targetAccountId, keyId).run();
