@@ -62,13 +62,29 @@ async function init() {
 
 async function loadOverview() {
     try {
-        // Fetch all data
+        const email = localStorage.getItem('bitfabric-email');
+        const passwordHash = localStorage.getItem('bitfabric-password-hash');
+        
+        if (!email || !passwordHash) {
+            console.error('Missing auth credentials');
+            return;
+        }
+        
+        // Fetch all data with authentication
         const [keysResp, appsResp] = await Promise.all([
-            fetch('/api/keys?scope=all'),
-            fetch('/api/app-ids?scope=all')
+            fetch(`/api/keys?email=${encodeURIComponent(email)}&scope=all`, {
+                headers: { 'x-bitfabric-password-hash': passwordHash }
+            }),
+            fetch(`/api/app-ids?email=${encodeURIComponent(email)}&scope=all`, {
+                headers: { 'x-bitfabric-password-hash': passwordHash }
+            })
         ]);
         
-        if (!keysResp.ok || !appsResp.ok) throw new Error('Failed to fetch data');
+        if (!keysResp.ok || !appsResp.ok) {
+            console.error('Keys response:', keysResp.status);
+            console.error('Apps response:', appsResp.status);
+            throw new Error('Failed to fetch data');
+        }
         
         const keysData = await keysResp.json();
         const appsData = await appsResp.json();
@@ -78,8 +94,8 @@ async function loadOverview() {
         
         // Calculate unique accounts
         const uniqueEmails = new Set();
-        allKeys.forEach(k => uniqueEmails.add(k.email));
-        allApps.forEach(a => uniqueEmails.add(a.email));
+        allKeys.forEach(k => uniqueEmails.add(k.account_id || 'unknown'));
+        allApps.forEach(a => uniqueEmails.add(a.account_id || 'unknown'));
         
         const totalUsers = uniqueEmails.size;
         const totalKeys = allKeys.length;
@@ -96,37 +112,38 @@ async function loadOverview() {
 
 async function loadUsers() {
     try {
-        const resp = await fetch('/api/authenticate', {
-            method: 'GET'
-        });
+        const email = localStorage.getItem('bitfabric-email');
+        const passwordHash = localStorage.getItem('bitfabric-password-hash');
         
-        if (!resp.ok) throw new Error('Failed to fetch users');
+        // Fetch keys and apps
+        const [keysResp, appsResp] = await Promise.all([
+            fetch(`/api/keys?email=${encodeURIComponent(email)}&scope=all`, {
+                headers: { 'x-bitfabric-password-hash': passwordHash }
+            }),
+            fetch(`/api/app-ids?email=${encodeURIComponent(email)}&scope=all`, {
+                headers: { 'x-bitfabric-password-hash': passwordHash }
+            })
+        ]);
         
         // Get unique emails from keys and apps
         const uniqueEmails = new Set();
         const emailStats = {};
         
-        // Fetch keys and apps
-        const [keysResp, appsResp] = await Promise.all([
-            fetch('/api/keys?scope=all'),
-            fetch('/api/app-ids?scope=all')
-        ]);
-        
         if (keysResp.ok) {
             const keysData = await keysResp.json();
             (keysData.keys || []).forEach(k => {
-                uniqueEmails.add(k.email);
-                if (!emailStats[k.email]) emailStats[k.email] = { email: k.email, keys: 0, apps: 0, created: k.created };
-                emailStats[k.email].keys++;
+                uniqueEmails.add(k.account_id || 'unknown');
+                if (!emailStats[k.account_id]) emailStats[k.account_id] = { account_id: k.account_id, keys: 0, apps: 0, created: k.created_at };
+                emailStats[k.account_id].keys++;
             });
         }
         
         if (appsResp.ok) {
             const appsData = await appsResp.json();
             (appsData.appIds || []).forEach(a => {
-                uniqueEmails.add(a.email);
-                if (!emailStats[a.email]) emailStats[a.email] = { email: a.email, keys: 0, apps: 0, created: a.created };
-                emailStats[a.email].apps++;
+                uniqueEmails.add(a.account_id || 'unknown');
+                if (!emailStats[a.account_id]) emailStats[a.account_id] = { account_id: a.account_id, keys: 0, apps: 0, created: a.created_at };
+                emailStats[a.account_id].apps++;
             });
         }
         
@@ -157,7 +174,12 @@ function renderUsers() {
 
 async function loadKeys() {
     try {
-        const resp = await fetch('/api/keys?scope=all');
+        const email = localStorage.getItem('bitfabric-email');
+        const passwordHash = localStorage.getItem('bitfabric-password-hash');
+        
+        const resp = await fetch(`/api/keys?email=${encodeURIComponent(email)}&scope=all`, {
+            headers: { 'x-bitfabric-password-hash': passwordHash }
+        });
         if (!resp.ok) throw new Error('Failed to fetch keys');
         
         const data = await resp.json();
@@ -192,7 +214,12 @@ function renderKeys() {
 
 async function loadApps() {
     try {
-        const resp = await fetch('/api/app-ids?scope=all');
+        const email = localStorage.getItem('bitfabric-email');
+        const passwordHash = localStorage.getItem('bitfabric-password-hash');
+        
+        const resp = await fetch(`/api/app-ids?email=${encodeURIComponent(email)}&scope=all`, {
+            headers: { 'x-bitfabric-password-hash': passwordHash }
+        });
         if (!resp.ok) throw new Error('Failed to fetch apps');
         
         const data = await resp.json();
