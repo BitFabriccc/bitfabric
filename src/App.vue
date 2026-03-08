@@ -477,6 +477,20 @@ const roomOptions = computed(() => {
   return [...keyOptions, ...appOptions];
 });
 
+watch(roomOptions, (options) => {
+  if (!options.length) return;
+  const hasPublishTarget = options.some((o) => o.value === publishRoomId.value);
+  if (!publishRoomId.value || !hasPublishTarget) {
+    publishRoomId.value = roomId.value || options[0].value;
+  }
+}, { immediate: true });
+
+watch(roomId, (val) => {
+  if (!publishRoomId.value) {
+    publishRoomId.value = val;
+  }
+});
+
 const selectedApp = computed(() => appIds.value.find(a => a.app_id === roomId.value));
 const selectedParentKey = computed(() => {
   const app = selectedApp.value;
@@ -1259,7 +1273,7 @@ async function navDisconnect(event, url) {
   window.location.href = url;
 }
 
-function publish() {
+async function publish() {
   if (!fabric || !isReady.value) return;
   let topic = publishTopic.value.trim();
   const dataStr = messageData.value.trim();
@@ -1276,64 +1290,59 @@ function publish() {
     }
   }
 
+  let data;
   try {
-    const data = JSON.parse(dataStr);
-    
-    // Create a temporary fabric instance for the target room if different from current
-    const publishFabric = (targetRoom && targetRoom !== roomId.value) 
-      ? new PubSubFabric({ roomId: targetRoom, nostrRelays })
-      : fabric;
-    
-    // Initialize temporary fabric if needed
-    const publishPromise = (publishFabric === fabric)
-      ? Promise.resolve()
-      : publishFabric.init();
-    
-    publishPromise.then(() => {
-      // Auto-subscribe to the topic if not already subscribed (only for main fabric)
-      if (publishFabric === fabric && !subscribedTopics.value.includes(topic)) {
-        const unsub = fabric.subscribe(topic, (message) => {
-          pushLog(`Message received on ${topic}: ${JSON.stringify(message.data)}`);
-          
-          if (messages.value.some(m => m.messageId === message.messageId)) return;
-          
-          const rawTimestamp = message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now();
-          messages.value.push({
-            topic: message.topic || topic,
-            from: message.from || 'unknown',
-            data: message.data || {},
-            messageId: message.messageId,
-            receivedAt: Math.min(rawTimestamp, Date.now())
-          });
-          
-          if (isForumVisible.value) {
-              messages.value.sort((a, b) => a.receivedAt - b.receivedAt);
-              if (messages.value.length > 200) messages.value.shift();
-          } else {
-              messages.value.sort((a, b) => b.receivedAt - a.receivedAt);
-              if (messages.value.length > 50) messages.value.pop();
-          }
-        });
-        
-        unsubscribeFunctions.set(topic, unsub);
-        subscribedTopics.value.push(topic);
-        pushLog(`Auto-subscribed to: ${topic}`);
-      }
-      
-      publishFabric.publish(topic, data).catch(err => {
-        pushLog(`Publish error: ${err.message}`);
-      }).finally(() => {
-        // Clean up temporary fabric
-        if (publishFabric !== fabric) {
-          publishFabric.disconnect?.();
-        }
-      });
-      
-      const roomLabel = targetRoom === roomId.value ? 'current room' : `room ${targetRoom.substring(0, 12)}...`;
-      pushLog(`Publishing to topic: ${topic} (${roomLabel})`);
-    });
+    data = JSON.parse(dataStr);
   } catch (err) {
     pushLog('Invalid JSON: ' + err.message);
+    return;
+  }
+
+  try {
+    // Ensure we are connected to the selected publish target.
+    if (targetRoom && targetRoom !== roomId.value) {
+      roomId.value = targetRoom;
+      await connect();
+      if (!fabric || !isReady.value) {
+        pushLog('Publish failed: unable to connect to target room.');
+        return;
+      }
+    }
+
+    // Auto-subscribe to the topic if not already subscribed
+    if (!subscribedTopics.value.includes(topic)) {
+      const unsub = fabric.subscribe(topic, (message) => {
+        pushLog(`Message received on ${topic}: ${JSON.stringify(message.data)}`);
+
+        if (messages.value.some(m => m.messageId === message.messageId)) return;
+
+        const rawTimestamp = message.timestamp ? parseInt(message.timestamp) || Date.now() : Date.now();
+        messages.value.push({
+          topic: message.topic || topic,
+          from: message.from || 'unknown',
+          data: message.data || {},
+          messageId: message.messageId,
+          receivedAt: Math.min(rawTimestamp, Date.now())
+        });
+
+        if (isForumVisible.value) {
+          messages.value.sort((a, b) => a.receivedAt - b.receivedAt);
+          if (messages.value.length > 200) messages.value.shift();
+        } else {
+          messages.value.sort((a, b) => b.receivedAt - a.receivedAt);
+          if (messages.value.length > 50) messages.value.pop();
+        }
+      });
+
+      unsubscribeFunctions.set(topic, unsub);
+      subscribedTopics.value.push(topic);
+      pushLog(`Auto-subscribed to: ${topic}`);
+    }
+
+    await fabric.publish(topic, data);
+    pushLog(`Publishing to topic: ${topic} (${roomId.value === targetRoom ? 'target room' : 'current room'})`);
+  } catch (err) {
+    pushLog('Publish failed: ' + (err?.message || err));
   }
 }
 
