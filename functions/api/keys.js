@@ -109,9 +109,13 @@ export async function onRequestGet(context) {
   try {
     let results;
     if (isSuperAdmin(auth.email) && includeAll) {
-      // Super admin sees ALL keys
+      // Super admin sees ALL keys with email info
       results = await env.DB.prepare(
-        'SELECT account_id, key_id, name, description, value, created_at, permanent FROM api_keys ORDER BY created_at DESC'
+        `SELECT k.account_id, a.email, a.plan, k.key_id, k.name, k.description, k.value, k.created_at, k.permanent 
+         FROM api_keys k 
+         JOIN accounts a ON k.account_id = a.account_id 
+         WHERE a.deleted_at IS NULL
+         ORDER BY k.created_at DESC`
       ).all();
     } else {
       // Regular user sees only their own keys

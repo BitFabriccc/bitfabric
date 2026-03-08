@@ -93,9 +93,13 @@ export async function onRequestGet(context) {
     try {
         let results;
         if (isSuperAdmin(auth.email) && includeAll) {
-            // Super admin sees ALL apps
+            // Super admin sees ALL apps with account/email info
             results = await env.DB.prepare(
-                'SELECT id, app_id, name, api_key_id, created_at FROM app_ids ORDER BY created_at DESC'
+                `SELECT a.id, a.app_id, a.name, a.account_id, acc.email, acc.plan, a.created_at 
+                 FROM app_ids a 
+                 JOIN accounts acc ON a.account_id = acc.account_id 
+                 WHERE acc.deleted_at IS NULL
+                 ORDER BY a.created_at DESC`
             ).all();
         } else {
             // Regular user sees only their own apps

@@ -125,25 +125,40 @@ async function loadUsers() {
             })
         ]);
         
-        // Get unique emails from keys and apps
-        const uniqueEmails = new Set();
+        // Get unique users from keys and apps
         const emailStats = {};
         
         if (keysResp.ok) {
             const keysData = await keysResp.json();
             (keysData.keys || []).forEach(k => {
-                uniqueEmails.add(k.account_id || 'unknown');
-                if (!emailStats[k.account_id]) emailStats[k.account_id] = { account_id: k.account_id, keys: 0, apps: 0, created: k.created_at };
-                emailStats[k.account_id].keys++;
+                if (!emailStats[k.email]) {
+                    emailStats[k.email] = { 
+                        email: k.email, 
+                        account_id: k.account_id,
+                        plan: k.plan,
+                        keys: 0, 
+                        apps: 0, 
+                        created: k.created_at 
+                    };
+                }
+                emailStats[k.email].keys++;
             });
         }
         
         if (appsResp.ok) {
             const appsData = await appsResp.json();
             (appsData.appIds || []).forEach(a => {
-                uniqueEmails.add(a.account_id || 'unknown');
-                if (!emailStats[a.account_id]) emailStats[a.account_id] = { account_id: a.account_id, keys: 0, apps: 0, created: a.created_at };
-                emailStats[a.account_id].apps++;
+                if (!emailStats[a.email]) {
+                    emailStats[a.email] = { 
+                        email: a.email,
+                        account_id: a.account_id,
+                        plan: a.plan,
+                        keys: 0, 
+                        apps: 0, 
+                        created: a.created_at 
+                    };
+                }
+                emailStats[a.email].apps++;
             });
         }
         
@@ -163,10 +178,10 @@ function renderUsers() {
     filtered.forEach(user => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${user.email}</td>
-            <td>${user.keys}</td>
-            <td>${user.apps}</td>
-            <td>${new Date(user.created).toLocaleDateString()}</td>
+            <td>${user.email || 'Unknown'}</td>
+            <td>${(user.plan || 'free').toUpperCase()}</td>
+            <td>${user.created ? new Date(user.created).toLocaleDateString() : 'N/A'}</td>
+            <td style="text-align: right;"><button class="btn-sm" onclick="alert('Delete user: ' + '${user.account_id}')">Delete</button></td>
         `;
         tbody.appendChild(row);
     });
@@ -197,15 +212,15 @@ function renderKeys() {
     const filtered = filterData(allKeys, 'search-keys', 'email');
     
     filtered.forEach(key => {
-        const masked = key.keyValue ? key.keyValue.substring(0, 10) + '...' : '***';
+        const masked = key.value ? key.value.substring(0, 10) + '...' : '***';
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${key.email}</td>
-            <td>${key.keyName || 'Unnamed'}</td>
+            <td>${key.email || 'Unknown'}</td>
+            <td>${key.name || 'Unnamed'}</td>
             <td><code>${masked}</code></td>
-            <td>${new Date(key.created).toLocaleDateString()}</td>
+            <td>${new Date(key.created_at).toLocaleDateString()}</td>
             <td style="text-align: right;">
-                <button class="btn-danger btn-sm" onclick="deleteKey('${key.keyId}')">Delete</button>
+                <button class="btn-danger btn-sm" onclick="deleteKey('${key.key_id}')">Delete</button>
             </td>
         `;
         tbody.appendChild(row);
@@ -239,13 +254,13 @@ function renderApps() {
     filtered.forEach(app => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${app.email}</td>
-            <td>${app.appName || 'Unnamed'}</td>
-            <td><code>${app.appId}</code></td>
-            <td><a href="${app.appId}" target="_blank">Open ↗</a></td>
-            <td>${new Date(app.created).toLocaleDateString()}</td>
+            <td>${app.email || 'Unknown'}</td>
+            <td>${app.name || 'Unnamed'}</td>
+            <td><code>${app.app_id}</code></td>
+            <td><a href="${app.app_id}" target="_blank">Open ↗</a></td>
+            <td>${new Date(app.created_at).toLocaleDateString()}</td>
             <td style="text-align: right;">
-                <button class="btn-danger btn-sm" onclick="deleteApp('${app.appId}')">Delete</button>
+                <button class="btn-danger btn-sm" onclick="deleteApp('${app.app_id}')">Delete</button>
             </td>
         `;
         tbody.appendChild(row);
