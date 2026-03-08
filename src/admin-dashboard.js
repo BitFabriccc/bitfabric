@@ -112,33 +112,93 @@ function renderOverview() {
 }
 
 function renderUsers() {
-    const tbody = document.getElementById('global-users-body');
+    const activeBody = document.getElementById('global-users-body');
+    const hiddenBody = document.getElementById('hidden-users-body');
+    const hiddenPanel = document.getElementById('hidden-users-panel');
     const users = filterData(allUsers, 'search-users', ['email', 'plan']);
 
-    if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No users match the current filter.</td></tr>';
-        return;
-    }
+    const activeUsers = users.filter((user) => !user.deleted_at);
+    const hiddenUsers = users.filter((user) => !!user.deleted_at);
 
-    tbody.innerHTML = users.map((user) => `
-        <tr class="${user.deleted_at ? 'row-deleted' : ''}">
-            <td>
-                <div class="cell-title">${escapeHtml(user.email)}</div>
-                <div class="cell-subtitle">${escapeHtml(user.account_id)}</div>
-            </td>
-            <td>${user.deleted_at ? '<span class="pill danger">Banned</span>' : '<span class="pill success">Active</span>'}</td>
-            <td><span class="pill muted">${escapeHtml((user.plan || 'free').toUpperCase())}</span></td>
-            <td>${user.key_count || 0}</td>
-            <td>${user.app_count || 0}</td>
-            <td>${formatDate(user.created_at)}</td>
-            <td class="actions-cell">
-                ${user.deleted_at
-                    ? `<button class="btn btn-success btn-sm" onclick="restoreUser('${escapeHtml(user.email)}')">Restore</button>`
-                    : `<button class="btn btn-warning btn-sm" onclick="banUser('${escapeHtml(user.email)}')">Ban</button>`}
-                <button class="btn btn-ghost btn-sm" onclick="revokeKeys('${escapeHtml(user.email)}')">Revoke keys</button>
-            </td>
-        </tr>
-    `).join('');
+    const userBlock = (user, hidden = false) => {
+        const userKeys = allKeys.filter((key) => key.account_id === user.account_id);
+        const userApps = allApps.filter((app) => app.account_id === user.account_id);
+
+        const keyItems = userKeys.length
+            ? userKeys.map((key) => `
+                <div class="child-item">
+                    <div class="child-main">
+                        <div class="cell-title">${escapeHtml(key.name || key.key_id || 'Unnamed key')}</div>
+                        <div class="cell-subtitle">${escapeHtml((key.value || '').slice(0, 20))}${key.value ? '…' : ''}</div>
+                    </div>
+                    <div class="child-actions">
+                        <span class="pill muted">${key.permanent ? 'Permanent' : 'Standard'}</span>
+                        <button class="btn btn-danger btn-sm" onclick="deleteKey('${escapeHtml(key.key_id)}','${escapeHtml(key.account_id)}')">Delete</button>
+                    </div>
+                </div>
+            `).join('')
+            : '<div class="child-item"><div class="child-main"><div class="cell-subtitle">No active keys</div></div></div>';
+
+        const appItems = userApps.length
+            ? userApps.map((app) => `
+                <div class="child-item">
+                    <div class="child-main">
+                        <div class="cell-title">${escapeHtml(app.name || 'Unnamed app')}</div>
+                        <div class="cell-subtitle">${escapeHtml(app.app_id)}</div>
+                    </div>
+                    <div class="child-actions">
+                        <button class="btn btn-danger btn-sm" onclick="deleteApp('${escapeHtml(app.app_id)}','${escapeHtml(app.account_id)}')">Delete</button>
+                    </div>
+                </div>
+            `).join('')
+            : '<div class="child-item"><div class="child-main"><div class="cell-subtitle">No app IDs</div></div></div>';
+
+        return `
+            <div class="user-node ${hidden ? 'hidden-user' : ''}">
+                <div class="user-head">
+                    <div class="user-head-main">
+                        <div class="cell-title">${escapeHtml(user.email)}</div>
+                        <div class="cell-subtitle">${escapeHtml(user.account_id)}</div>
+                        <div class="user-head-meta">
+                            ${hidden ? '<span class="pill danger">Hidden</span>' : '<span class="pill success">Active</span>'}
+                            <span class="pill muted">${escapeHtml((user.plan || 'free').toUpperCase())}</span>
+                            <span class="pill muted">${userKeys.length} key${userKeys.length === 1 ? '' : 's'}</span>
+                            <span class="pill muted">${userApps.length} app${userApps.length === 1 ? '' : 's'}</span>
+                            <span class="pill muted">Joined ${formatDate(user.created_at)}</span>
+                        </div>
+                    </div>
+                    <div class="actions-cell">
+                        ${hidden
+                            ? `<button class="btn btn-success btn-sm" onclick="restoreUser('${escapeHtml(user.email)}')">Restore</button>`
+                            : `<button class="btn btn-warning btn-sm" onclick="banUser('${escapeHtml(user.email)}')">Hide</button>
+                               <button class="btn btn-ghost btn-sm" onclick="revokeKeys('${escapeHtml(user.email)}')">Revoke keys</button>`}
+                    </div>
+                </div>
+                ${hidden ? '' : `
+                    <div class="user-children">
+                        <div class="child-group">
+                            <div class="child-label">Keys</div>
+                            ${keyItems}
+                        </div>
+                        <div class="child-group">
+                            <div class="child-label">App IDs</div>
+                            ${appItems}
+                        </div>
+                    </div>
+                `}
+            </div>
+        `;
+    };
+
+    activeBody.innerHTML = activeUsers.length
+        ? activeUsers.map((user) => userBlock(user, false)).join('')
+        : '<div class="empty-state">No active users match the current filter.</div>';
+
+    hiddenBody.innerHTML = hiddenUsers.length
+        ? hiddenUsers.map((user) => userBlock(user, true)).join('')
+        : '<div class="empty-state">No hidden users.</div>';
+
+    hiddenPanel.open = hiddenUsers.length > 0 && document.getElementById('search-users')?.value?.trim();
 }
 
 function renderKeys() {

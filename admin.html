@@ -458,6 +458,95 @@
             color: var(--text-muted);
             font-size: 13px;
         }
+
+        .user-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .user-node {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            overflow: hidden;
+        }
+
+        .user-node.hidden-user {
+            opacity: 0.8;
+        }
+
+        .user-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px 20px;
+            align-items: flex-start;
+        }
+
+        .user-head-main {
+            min-width: 0;
+        }
+
+        .user-head-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .user-children {
+            padding: 0 20px 18px 20px;
+        }
+
+        .child-group {
+            margin-left: 24px;
+            padding-left: 18px;
+            border-left: 2px solid rgba(255, 255, 255, 0.08);
+            margin-top: 12px;
+        }
+
+        .child-label {
+            color: var(--text-muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+
+        .child-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .child-item:first-child {
+            border-top: 0;
+        }
+
+        .child-main {
+            min-width: 0;
+        }
+
+        .child-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .hidden-panel {
+            margin-top: 18px;
+        }
+
+        .hidden-panel summary {
+            cursor: pointer;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
     </style>
 </head>
 
@@ -538,22 +627,11 @@
                 </div>
             </div>
             <div class="card">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>Status</th>
-                            <th>Plan</th>
-                            <th>Keys</th>
-                            <th>Apps</th>
-                            <th>Registered</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="global-users-body">
-                        <!-- JS populated -->
-                    </tbody>
-                </table>
+                <div id="global-users-body" class="user-tree"></div>
+                <details id="hidden-users-panel" class="hidden-panel">
+                    <summary>Hidden / banned users</summary>
+                    <div id="hidden-users-body" class="user-tree"></div>
+                </details>
             </div>
         </div>
 

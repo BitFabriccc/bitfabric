@@ -114,12 +114,13 @@ export async function onRequestGet(context) {
         `SELECT k.account_id, a.email, a.plan, a.deleted_at, k.key_id, k.name, k.description, k.value, k.created_at, k.permanent 
          FROM api_keys k 
          JOIN accounts a ON k.account_id = a.account_id 
+         WHERE k.deleted_at IS NULL
          ORDER BY k.created_at DESC`
       ).all();
     } else {
       // Regular user sees only their own keys
       results = await env.DB.prepare(
-        'SELECT account_id, key_id, name, description, value, created_at, permanent FROM api_keys WHERE account_id = ?'
+        'SELECT account_id, key_id, name, description, value, created_at, permanent FROM api_keys WHERE account_id = ? AND deleted_at IS NULL'
       ).bind(auth.accountId).all();
     }
 
