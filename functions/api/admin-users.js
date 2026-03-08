@@ -130,6 +130,33 @@ export async function onRequestPost(context) {
       return new Response(JSON.stringify({ success: true, message: `User ${targetEmail} restored` }), {
         headers: { 'Content-Type': 'application/json' }
       });
+    } else if (action === 'delete') {
+      const account = await env.DB.prepare(
+        'SELECT account_id, deleted_at FROM accounts WHERE email = ?'
+      ).bind(targetEmail).first();
+
+      if (!account) {
+        return new Response(JSON.stringify({ error: 'User not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (!account.deleted_at) {
+        return new Response(JSON.stringify({ error: 'User must be hidden before deletion' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      await env.DB.prepare('DELETE FROM api_keys WHERE account_id = ?').bind(account.account_id).run();
+      await env.DB.prepare('DELETE FROM app_ids WHERE account_id = ?').bind(account.account_id).run();
+      await env.DB.prepare('DELETE FROM user_relays WHERE user_email = ?').bind(targetEmail).run();
+      await env.DB.prepare('DELETE FROM accounts WHERE email = ?').bind(targetEmail).run();
+
+      return new Response(JSON.stringify({ success: true, message: `User ${targetEmail} permanently deleted` }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
     } else if (action === 'revoke-keys') {
       // Delete all keys for a user
       const userResult = await env.DB.prepare(

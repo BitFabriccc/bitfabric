@@ -169,7 +169,8 @@ function renderUsers() {
                     </div>
                     <div class="actions-cell">
                         ${hidden
-                            ? `<button class="btn btn-success btn-sm" onclick="restoreUser('${escapeHtml(user.email)}')">Restore</button>`
+                            ? `<button class="btn btn-success btn-sm" onclick="restoreUser('${escapeHtml(user.email)}')">Restore</button>
+                               <button class="btn btn-danger btn-sm" onclick="deleteHiddenUser('${escapeHtml(user.email)}')">Delete</button>`
                             : `<button class="btn btn-warning btn-sm" onclick="banUser('${escapeHtml(user.email)}')">Hide</button>
                                <button class="btn btn-ghost btn-sm" onclick="revokeKeys('${escapeHtml(user.email)}')">Revoke keys</button>`}
                     </div>
@@ -311,6 +312,11 @@ async function restoreUser(email) {
     await runUserAction('restore', email, `Restored ${email}`);
 }
 
+async function deleteHiddenUser(email) {
+    if (!confirm(`Permanently delete hidden user ${email}? This cannot be undone.`)) return;
+    await runUserAction('delete', email, `Deleted ${email}`);
+}
+
 async function revokeKeys(email) {
     if (!confirm(`Revoke all keys for ${email}?`)) return;
     await runUserAction('revoke-keys', email, `Revoked keys for ${email}`);
@@ -400,6 +406,7 @@ async function init() {
 
 window.banUser = banUser;
 window.restoreUser = restoreUser;
+window.deleteHiddenUser = deleteHiddenUser;
 window.revokeKeys = revokeKeys;
 window.deleteKey = deleteKey;
 window.deleteApp = deleteApp;
