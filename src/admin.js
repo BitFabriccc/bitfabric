@@ -353,14 +353,14 @@ async function banUser(email) {
         });
         
         if (resp.ok) {
+            console.log('User banned:', email);
             await loadUsers();
         } else {
             const err = await resp.json();
-            alert('Failed to ban user: ' + err.error);
+            console.error('Failed to ban user:', err.error);
         }
     } catch (err) {
         console.error('Ban error:', err);
-        alert('Error banning user');
     }
 }
 
@@ -383,14 +383,14 @@ async function restoreUser(email) {
         });
         
         if (resp.ok) {
+            console.log('User restored:', email);
             await loadUsers();
         } else {
             const err = await resp.json();
-            alert('Failed to restore user: ' + err.error);
+            console.error('Failed to restore user:', err.error);
         }
     } catch (err) {
         console.error('Restore error:', err);
-        alert('Error restoring user');
     }
 }
 
@@ -414,16 +414,15 @@ async function revokeKeys(email) {
         
         if (resp.ok) {
             const data = await resp.json();
-            alert(data.message);
+            console.log('Keys revoked:', data.message);
             await loadKeys();
             await loadUsers();
         } else {
             const err = await resp.json();
-            alert('Failed to revoke keys: ' + err.error);
+            console.error('Failed to revoke keys:', err.error);
         }
     } catch (err) {
         console.error('Revoke error:', err);
-        alert('Error revoking keys');
     }
 }
 

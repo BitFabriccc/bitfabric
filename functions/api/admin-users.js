@@ -97,9 +97,10 @@ export async function onRequestPost(context) {
         'UPDATE api_keys SET deleted_at = CURRENT_TIMESTAMP WHERE account_id = ? AND deleted_at IS NULL'
       ).bind(userResult.account_id).run();
 
+      const count = deleted.meta.changes || 0;
       return new Response(JSON.stringify({ 
         success: true, 
-        message: `Revoked ${deleted.meta.duration} keys for ${targetEmail}` 
+        message: `Revoked ${count} key(s) for ${targetEmail}` 
       }), {
         headers: { 'Content-Type': 'application/json' }
       });
