@@ -85,6 +85,7 @@
             <button class="btn-primary" @click="signInWithEmail" :disabled="!signInEmail.trim() || !signInPassword.trim()">
               Sign In
             </button>
+            <p v-if="signInError" class="signin-error">{{ signInError }}</p>
             <div style="margin-top: 12px; font-size: 13px;">
               <a href="/signup" class="btn-link">Create Account</a> · <a href="/pricing" class="btn-link">View Pricing</a>
             </div>
@@ -403,6 +404,7 @@ const authApiKey = ref(sessionStorage.getItem('bitfabric-auth-api-key') || '');
 const accountId = ref('');
 const signInEmail = ref('');
 const signInPassword = ref('');
+const signInError = ref('');
 // New visitors with no session are always free tier by default
 const isFreeTier = ref(sessionStorage.getItem('bitfabric-global-tier') === 'true');
 const freeTopic = 'bitfabric-global-tier';
@@ -1014,6 +1016,7 @@ function formatDate(timestamp) {
 async function signInWithEmail() {
   const email = signInEmail.value.trim().toLowerCase();
   const password = signInPassword.value.trim();
+  signInError.value = '';
   if (!email || !password) return;
 
   // SHA-256 password hash (hex)
@@ -1024,8 +1027,7 @@ async function signInWithEmail() {
     const hash = await crypto.subtle.digest('SHA-256', data);
     passwordHash = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
   } catch {
-    // If hashing fails, treat as sign-in failure
-    window.location.href = `/signup?email=${encodeURIComponent(email)}`;
+    signInError.value = 'Unable to process sign-in. Please try again.';
     return;
   }
 
@@ -1038,15 +1040,18 @@ async function signInWithEmail() {
     });
 
     if (!authResponse.ok) {
-      window.location.href = `/signup?email=${encodeURIComponent(email)}`;
+      const err = await authResponse.json().catch(() => ({}));
+      signInError.value = err?.error || 'Invalid email or password.';
       return;
     }
 
     const authData = await authResponse.json();
     if (!authData?.authenticated) {
-      window.location.href = `/signup?email=${encodeURIComponent(email)}`;
+      signInError.value = authData?.error || 'Invalid email or password.';
       return;
     }
+
+    signInError.value = '';
 
     sessionStorage.setItem('bitfabric-api-key', authData.sessionKey);
     localStorage.setItem('bitfabric-email', authData.email);
@@ -1104,7 +1109,7 @@ async function signInWithEmail() {
 
     connect();
   } catch {
-    window.location.href = `/signup?email=${encodeURIComponent(email)}`;
+    signInError.value = 'Sign-in failed due to a network/server issue.';
   }
 }
 
@@ -1534,6 +1539,13 @@ if (isFreeTier.value && !userEmail.value) {
   gap: 8px;
   font-size: 12px;
 }
+
+.signin-error {
+  margin-top: 8px;
+  color: #f56565;
+  font-size: 13px;
+}
+
 .locked-topic {
   display: flex;
   align-items: center;
