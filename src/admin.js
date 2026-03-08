@@ -27,27 +27,36 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // Initialize
 async function init() {
     try {
-        // Check if user is authenticated from sessionStorage
-        const email = sessionStorage.getItem('bitfabric-email');
+        // Check if user is authenticated from storage (localStorage for email, sessionStorage for session state)
+        const email = localStorage.getItem('bitfabric-email') || sessionStorage.getItem('bitfabric-email');
+        console.log('Admin init - email from storage:', email);
+        
         if (!email) {
-            window.location.href = '/';
+            console.log('No email in storage, redirecting to /');
+            // Give browser time to log before redirect
+            setTimeout(() => window.location.href = '/', 500);
             return;
         }
         
         // Check if this user is a super admin by checking the super admin list
         const superAdmins = ['draeder@gmail.com', 'danraeder@gmail.com', 'daniel@bitfabric.cc'];
-        if (!superAdmins.includes(email.toLowerCase())) {
+        const isAdmin = superAdmins.includes(email.toLowerCase());
+        console.log('Is super admin:', isAdmin);
+        
+        if (!isAdmin) {
+            console.log('User is not a super admin');
             document.body.innerHTML = '<h1>❌ Access Denied</h1><p>Super admin access required.</p>';
             return;
         }
         
+        console.log('Admin access granted for:', email);
         currentUser = { email };
         
         // Load overview
         loadOverview();
     } catch (err) {
         console.error('Init error:', err);
-        window.location.href = '/';
+        setTimeout(() => window.location.href = '/', 500);
     }
 }
 
