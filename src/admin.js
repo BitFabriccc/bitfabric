@@ -27,28 +27,21 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // Initialize
 async function init() {
     try {
-        // Check auth
-        const authResp = await fetch('/api/authenticate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: sessionStorage.getItem('bitfabric-email'),
-                passwordHash: sessionStorage.getItem('bitfabric-password-hash')
-            })
-        });
-        
-        if (!authResp.ok) {
+        // Check if user is authenticated from sessionStorage
+        const email = sessionStorage.getItem('bitfabric-email');
+        if (!email) {
             window.location.href = '/';
             return;
         }
         
-        const authData = await authResp.json();
-        if (!authData.isSuperAdmin) {
+        // Check if this user is a super admin by checking the super admin list
+        const superAdmins = ['draeder@gmail.com', 'danraeder@gmail.com', 'daniel@bitfabric.cc'];
+        if (!superAdmins.includes(email.toLowerCase())) {
             document.body.innerHTML = '<h1>❌ Access Denied</h1><p>Super admin access required.</p>';
             return;
         }
         
-        currentUser = authData;
+        currentUser = { email };
         
         // Load overview
         loadOverview();
