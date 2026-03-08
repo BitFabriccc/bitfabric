@@ -419,5 +419,17 @@ async function revokeKeys(email) {
     }
 }
 
+// Expose functions to global scope for onclick handlers
+window.banUser = banUser;
+window.restoreUser = restoreUser;
+window.revokeKeys = revokeKeys;
+
+// Expose functions to global scope for onclick handlers
+window.banUser = banUser;
+window.restoreUser = restoreUser;
+window.revokeKeys = revokeKeys;
+window.deleteKey = deleteKey;
+window.deleteApp = deleteApp;
+
 // Start initialization
 init();
