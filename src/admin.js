@@ -63,7 +63,7 @@ async function init() {
 async function loadOverview() {
     try {
         const email = localStorage.getItem('bitfabric-email');
-        const passwordHash = localStorage.getItem('bitfabric-password-hash');
+        const passwordHash = sessionStorage.getItem('bitfabric-password-hash');
         
         if (!email || !passwordHash) {
             console.error('Missing auth credentials');
@@ -113,7 +113,7 @@ async function loadOverview() {
 async function loadUsers() {
     try {
         const email = localStorage.getItem('bitfabric-email');
-        const passwordHash = localStorage.getItem('bitfabric-password-hash');
+        const passwordHash = sessionStorage.getItem('bitfabric-password-hash');
         
         // Fetch keys and apps
         const [keysResp, appsResp] = await Promise.all([
@@ -136,6 +136,7 @@ async function loadUsers() {
                         email: k.email, 
                         account_id: k.account_id,
                         plan: k.plan,
+                        deleted_at: k.deleted_at,
                         keys: 0, 
                         apps: 0, 
                         created: k.created_at 
@@ -153,6 +154,7 @@ async function loadUsers() {
                         email: a.email,
                         account_id: a.account_id,
                         plan: a.plan,
+                        deleted_at: a.deleted_at,
                         keys: 0, 
                         apps: 0, 
                         created: a.created_at 
@@ -199,7 +201,7 @@ function renderUsers() {
 async function loadKeys() {
     try {
         const email = localStorage.getItem('bitfabric-email');
-        const passwordHash = localStorage.getItem('bitfabric-password-hash');
+        const passwordHash = sessionStorage.getItem('bitfabric-password-hash');
         
         const resp = await fetch(`/api/keys?email=${encodeURIComponent(email)}&scope=all`, {
             headers: { 'x-bitfabric-password-hash': passwordHash }
@@ -239,7 +241,7 @@ function renderKeys() {
 async function loadApps() {
     try {
         const email = localStorage.getItem('bitfabric-email');
-        const passwordHash = localStorage.getItem('bitfabric-password-hash');
+        const passwordHash = sessionStorage.getItem('bitfabric-password-hash');
         
         const resp = await fetch(`/api/app-ids?email=${encodeURIComponent(email)}&scope=all`, {
             headers: { 'x-bitfabric-password-hash': passwordHash }
@@ -336,13 +338,15 @@ async function banUser(email) {
     if (!confirm(`Ban user ${email}? They will lose access immediately.`)) return;
     
     try {
+        const adminEmail = localStorage.getItem('bitfabric-email');
         const resp = await fetch('/api/admin-users', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-bitfabric-password-hash': localStorage.getItem('bitfabric-password-hash')
+                'x-bitfabric-password-hash': sessionStorage.getItem('bitfabric-password-hash')
             },
             body: JSON.stringify({
+                adminEmail,
                 action: 'ban',
                 targetEmail: email
             })
@@ -364,13 +368,15 @@ async function restoreUser(email) {
     if (!confirm(`Restore user ${email}?`)) return;
     
     try {
+        const adminEmail = localStorage.getItem('bitfabric-email');
         const resp = await fetch('/api/admin-users', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-bitfabric-password-hash': localStorage.getItem('bitfabric-password-hash')
+                'x-bitfabric-password-hash': sessionStorage.getItem('bitfabric-password-hash')
             },
             body: JSON.stringify({
+                adminEmail,
                 action: 'restore',
                 targetEmail: email
             })
@@ -392,13 +398,15 @@ async function revokeKeys(email) {
     if (!confirm(`Revoke all API keys for ${email}?`)) return;
     
     try {
+        const adminEmail = localStorage.getItem('bitfabric-email');
         const resp = await fetch('/api/admin-users', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-bitfabric-password-hash': localStorage.getItem('bitfabric-password-hash')
+                'x-bitfabric-password-hash': sessionStorage.getItem('bitfabric-password-hash')
             },
             body: JSON.stringify({
+                adminEmail,
                 action: 'revoke-keys',
                 targetEmail: email
             })

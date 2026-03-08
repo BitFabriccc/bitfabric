@@ -41,21 +41,21 @@ async function requireAdminAuth({ env, email, passwordHash }) {
 export async function onRequestPost(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const email = url.searchParams.get('email');
   const passwordHash = request.headers.get('x-bitfabric-password-hash');
-
-  const auth = await requireAdminAuth({ env, email, passwordHash });
-  if (!auth.ok) {
-    return new Response(JSON.stringify({ error: auth.error }), {
-      status: auth.status,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
 
   try {
     const body = await request.json();
+    const adminEmail = body.adminEmail || url.searchParams.get('email');
     const action = body.action;
     const targetEmail = body.targetEmail?.toLowerCase();
+
+    const auth = await requireAdminAuth({ env, email: adminEmail, passwordHash });
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     if (!action || !targetEmail) {
       return new Response(JSON.stringify({ error: 'Missing action or targetEmail' }), {
