@@ -122,6 +122,10 @@
                 <a href="/analytics.html" target="_blank" class="btn-outline btn-sm" style="width:100%; display:block; text-decoration: none;">View Usage Analytics ↗</a>
             </div>
 
+            <div v-if="isSuperAdminUser" style="margin-top: 8px; text-align: center;">
+              <a href="/admin" class="btn-outline btn-sm" style="width:100%; display:block; text-decoration: none; border-color: #f59e0b; color: #f59e0b;">Open Super Admin ↗</a>
+            </div>
+
             <div v-if="confirmCancelBurst" style="margin-top: 12px; padding: 12px; border-radius: 8px; background: #fff5f5; border: 1px solid #fed7d7;">
               <h4 style="margin: 0 0 8px 0; color: #c53030; font-size: 14px;">Confirm Cancellation</h4>
               <p style="font-size: 13px; color: #742a2a; margin-bottom: 10px; line-height: 1.4;">
@@ -450,6 +454,10 @@ const forumMessages = computed(() => {
 });
 
 const isEmailAuthed = computed(() => !!userEmail.value?.trim());
+const isSuperAdminUser = computed(() => {
+  const email = (userEmail.value || '').trim().toLowerCase();
+  return email === 'draeder@gmail.com' || email === 'danraeder@gmail.com' || email === 'daniel@bitfabric.cc';
+});
 const isSessionActive = computed(() => isEmailAuthed.value || isFreeTier.value || isValidated.value);
 const roomOptions = computed(() => {
   const keyOptions = apiKeys.value.map((key) => ({
